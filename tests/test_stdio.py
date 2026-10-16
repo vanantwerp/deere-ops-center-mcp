@@ -38,6 +38,7 @@ EXPECTED_TOOLS = {
     "jd_save_file",
     "jd_export_field_operations",
 }
+WRITE_TOOLS = {"jd_download_operation_shapefile", "jd_save_file", "jd_export_field_operations"}
 
 
 def _console_script() -> str | None:
@@ -77,4 +78,5 @@ async def test_stdio_handshake_lists_all_tools(tmp_path: Path) -> None:
     assert EXPECTED_TOOLS <= names, f"missing tools: {sorted(EXPECTED_TOOLS - names)}"
     for tool in result.tools:
         assert tool.annotations is not None, f"{tool.name} has no annotations"
-        assert tool.annotations.read_only_hint is True, f"{tool.name} is not marked read-only"
+        expected = tool.name not in WRITE_TOOLS
+        assert tool.annotations.read_only_hint is expected, f"{tool.name}: wrong read_only_hint"

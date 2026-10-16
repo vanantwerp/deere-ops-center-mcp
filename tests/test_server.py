@@ -28,6 +28,7 @@ from deere_mcp.tools._common import (
 from tests.helpers import RouteHandler, deere_list, json_response
 
 FIELDS = "/platform/organizations/1%2F2/fields"
+WRITE_TOOLS = {"jd_download_operation_shapefile", "jd_save_file", "jd_export_field_operations"}
 
 
 @pytest.mark.anyio
@@ -40,7 +41,12 @@ async def test_server_connects_and_lists_tools(settings: Settings) -> None:
     for tool in listed.tools:
         assert tool.name.startswith("jd_")
         assert tool.description
-        assert tool.annotations is not None and tool.annotations.read_only_hint is True
+        assert tool.annotations is not None
+        if tool.name in WRITE_TOOLS:
+            assert tool.annotations.read_only_hint is False
+            assert tool.annotations.destructive_hint is True
+        else:
+            assert tool.annotations.read_only_hint is True
         assert "ctx" not in (tool.input_schema.get("properties") or {})
 
 

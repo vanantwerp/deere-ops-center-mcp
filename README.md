@@ -1,6 +1,6 @@
 # Deere Ops Center MCP
 
-Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Operations Center data: fields, field operations, equipment, work plans and more. It runs on your own computer. It can only read; it cannot change anything in Operations Center.
+Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Operations Center data: fields, field operations, equipment, work plans and more. It runs on your own computer. It can only read; it cannot change anything in Operations Center. The only thing it writes on your computer is the files you ask it to save, in one output folder.
 
 ---
 
@@ -364,7 +364,7 @@ uv run deere-mcp setup --source .
 
 Rules that keep the tool safe:
 
-- Tools only read. The sign-in asks for read permissions and that stays true.
+- Tools only read from John Deere. The sign-in asks for read permissions and that stays true. The three file tools write only inside the output folder and carry the `WRITES_FILES` annotation, so AI apps know to ask before running them; every other tool is `READ_ONLY`.
 - No real Application IDs, Secrets, tokens or farm data anywhere in the repository. Use made-up values.
 - No `print()` under `src/` except in `cli.py`; the server talks to the AI app over standard output.
 - Never log tokens, secrets, or request or response bodies.

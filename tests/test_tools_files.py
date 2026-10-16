@@ -538,3 +538,18 @@ async def test_export_failure_from_deere_is_a_tool_error_and_writes_no_file(
 
     assert "Forbidden for this org" in error_text(result)
     assert not (settings.output_dir / "field-2-operations.json").exists()
+
+
+# --- annotations ---------------------------------------------------------------------------
+
+
+async def test_file_tools_say_they_write(mcp_client) -> None:
+    """The file tools must not claim to be read-only: AI apps use the hint to skip asking."""
+    async with mcp_client(RouteHandler()) as client:
+        tools = {tool.name: tool for tool in (await client.list_tools()).tools}
+    for name in ("jd_download_operation_shapefile", "jd_save_file", "jd_export_field_operations"):
+        annotations = tools[name].annotations
+        assert annotations is not None, name
+        assert annotations.read_only_hint is False, name
+        assert annotations.destructive_hint is True, name
+        assert annotations.idempotent_hint is True, name

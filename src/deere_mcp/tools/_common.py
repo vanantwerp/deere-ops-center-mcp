@@ -24,6 +24,11 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
+# For the tools that create or replace a file in the output folder. AI apps read these hints
+# when deciding whether to ask before running a tool, so a tool that writes must say so.
+WRITES_FILES = ToolAnnotations(
+    read_only_hint=False, destructive_hint=True, idempotent_hint=True, open_world_hint=True
+)
 
 
 def app(ctx: Context[AppContext]) -> AppContext:

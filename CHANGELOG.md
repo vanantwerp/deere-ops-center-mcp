@@ -16,7 +16,7 @@ First release. Everything below is new.
 - Guidance lines, products, operators and work plans.
 - Equipment, and machine health: alerts, engine hours, hours of operation, location history and device state reports.
 - A general read-only `jd_get` tool for John Deere endpoints that have no tool of their own. It only talks to Deere hosts, and it can return measurement map images.
-- File tools: download an operation's shapefile as a zip, save text such as a CSV, and export several seasons of a field's operations to one JSON file. Files are only written inside your output folder.
+- File tools: download an operation's shapefile as a zip, save text such as a CSV, and export several seasons of a field's operations to one JSON file. Files are only written inside your output folder, and these three tools are marked as writing tools, so an AI app that asks before a tool changes anything asks for them; every other tool is marked read-only.
 - Long lists are fetched page by page, up to a page cap (default 20) that you can change. The tool says so when a list was cut short.
 - Optional settings for measurement system, yield units, sign-in port, output folder and John Deere environment. See `.env.example`.
 - Tests that run without any John Deere account, and a GitHub Actions check on Linux, macOS and Windows.

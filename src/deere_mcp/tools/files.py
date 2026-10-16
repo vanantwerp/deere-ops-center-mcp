@@ -23,7 +23,13 @@ from pydantic import Field
 from deere_mcp.client import DeereError
 from deere_mcp.config import Settings
 from deere_mcp.server import AppContext
-from deere_mcp.tools._common import READ_ONLY, app, drop_links, resolve_output_path, tool_errors
+from deere_mcp.tools._common import (
+    WRITES_FILES,
+    app,
+    drop_links,
+    resolve_output_path,
+    tool_errors,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +124,7 @@ async def _download(location: str, path: Path) -> int:
 def register(mcp: MCPServer) -> None:
     """Register the file tools on the server."""
 
-    @mcp.tool(annotations=READ_ONLY)
+    @mcp.tool(annotations=WRITES_FILES)
     @tool_errors
     async def jd_download_operation_shapefile(
         operation_id: Annotated[
@@ -217,7 +223,7 @@ def register(mcp: MCPServer) -> None:
                 "while preparing the shapefile."
             )
 
-    @mcp.tool(annotations=READ_ONLY)
+    @mcp.tool(annotations=WRITES_FILES)
     @tool_errors
     async def jd_save_file(
         filename: Annotated[
@@ -245,7 +251,7 @@ def register(mcp: MCPServer) -> None:
         _write_bytes(path, data)
         return {"path": str(path), "bytes": len(data)}
 
-    @mcp.tool(annotations=READ_ONLY)
+    @mcp.tool(annotations=WRITES_FILES)
     @tool_errors
     async def jd_export_field_operations(
         org_id: Annotated[str, Field(description="Organization ID, from jd_list_organizations.")],
