@@ -383,3 +383,31 @@ async def test_logout_without_file_returns_false(settings: Settings) -> None:
     async with httpx.AsyncClient(transport=httpx.MockTransport(routes)) as http:
         assert await auth.logout(settings, TokenStore(settings.token_path), http=http) is False
     assert routes.requests == []
+
+
+@pytest.mark.anyio
+async def test_login_reports_a_failed_organization_check(settings: Settings) -> None:
+    port = _free_port()
+    settings = replace(settings, callback_port=port)
+    store = TokenStore(settings.token_path)
+    routes = RouteHandler().add_oauth(
+        httpx.Response(200, json={"access_token": "a", "refresh_token": "r", "expires_in": 9})
+    )
+    routes.add("GET", "/platform/organizations", httpx.Response(403, json={"message": "nope"}))
+    lines: list[str] = []
+    async with httpx.AsyncClient(transport=httpx.MockTransport(routes)) as http:
+        task = asyncio.create_task(
+            auth.login(settings, store, open_browser=False, http=http, echo=lines.append)
+        )
+        auth_url = await _wait_for_line(lines, "https://signin.johndeere.com")
+        state = parse_qs(urlsplit(auth_url).query)["state"][0]
+        async with httpx.AsyncClient(trust_env=False) as browser:
+            await browser.get(
+                f"http://127.0.0.1:{port}/callback", params={"code": "c", "state": state}
+            )
+        tokens = await asyncio.wait_for(task, 5)
+
+    assert store.load() == tokens  # signed in regardless
+    report = next(line for line in lines if line.startswith("Could not check organization access"))
+    assert "403" in report
+    assert "connections.deere.com" in report

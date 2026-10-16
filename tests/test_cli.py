@@ -90,6 +90,7 @@ def machine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeMachine:
     monkeypatch.setenv("APPDATA", str(appdata))
     monkeypatch.setenv("LOCALAPPDATA", str(user_home / "AppData" / "Local"))
     monkeypatch.delenv(clients.SOURCE_ENV, raising=False)
+    monkeypatch.delenv("UV", raising=False)
     fake = FakeMachine(user_home=user_home, appdata=appdata, programs={})
     fake.install_uv()
     monkeypatch.setattr(cli, "_which", lambda program: fake.programs.get(program))
@@ -384,7 +385,7 @@ def test_connect_without_uv(
     machine.programs.clear()
     assert cli.main(["connect", "--yes"]) == 1
     err = capsys.readouterr().err
-    assert "uv was not found on PATH" in err
+    assert "uv was not found" in err
     assert err.rstrip().endswith('Run "deere-mcp connect" to try again.')
     assert not machine.desktop_config().exists()
 

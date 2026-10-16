@@ -72,6 +72,14 @@ def test_local_folder_source_is_made_absolute(
 # build_entry ---------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def _no_real_uv(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Hide the uv that runs these tests, so discovery tests see only what they set up."""
+    monkeypatch.delenv("UV", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "nohome"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "nohome"))
+
+
 def test_entry_prefers_uvx(tmp_path: Path) -> None:
     uvx, uv = str(tmp_path / "uvx"), str(tmp_path / "uv")
     entry = clients.build_entry(SOURCE, platform="darwin", which=which_from({"uvx": uvx, "uv": uv}))
@@ -92,9 +100,41 @@ def test_entry_command_is_always_absolute() -> None:
     assert entry.command == os.path.abspath("bin/uvx")
 
 
-def test_entry_without_uv_is_an_error() -> None:
-    with pytest.raises(ClientConfigError, match="uv was not found on PATH"):
-        clients.build_entry(SOURCE, which=which_from({}))
+def test_entry_without_uv_is_an_error(tmp_path: Path) -> None:
+    with pytest.raises(ClientConfigError, match="uv was not found"):
+        clients.build_entry(SOURCE, which=which_from({}), env={}, home=tmp_path)
+
+
+def _executable(path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("#!/bin/sh\n")
+    path.chmod(0o755)
+    return path
+
+
+def test_entry_finds_uvx_beside_the_running_uv(tmp_path: Path) -> None:
+    """`uv run` sets UV to its own path; uvx lives next to it even when PATH lacks the folder."""
+    uv = _executable(tmp_path / "bin" / "uv")
+    uvx = _executable(tmp_path / "bin" / "uvx")
+    entry = clients.build_entry(
+        SOURCE, platform="linux", which=which_from({}), env={"UV": str(uv)}, home=tmp_path / "h"
+    )
+    assert entry.command == str(uvx)
+
+
+def test_entry_finds_uvx_in_the_default_install_folder(tmp_path: Path) -> None:
+    uvx = _executable(tmp_path / ".local" / "bin" / "uvx")
+    entry = clients.build_entry(
+        SOURCE, platform="linux", which=which_from({}), env={}, home=tmp_path
+    )
+    assert entry.command == str(uvx)
+
+
+def test_entry_ignores_a_uv_hint_that_points_nowhere(tmp_path: Path) -> None:
+    with pytest.raises(ClientConfigError, match="uv was not found"):
+        clients.build_entry(
+            SOURCE, which=which_from({}), env={"UV": str(tmp_path / "gone" / "uv")}, home=tmp_path
+        )
 
 
 def test_windows_entry_sets_utf8(tmp_path: Path) -> None:

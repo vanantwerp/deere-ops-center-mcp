@@ -585,7 +585,13 @@ async def login(
             try:
                 connections = await find_connections_link(http, settings, tokens)
             except (AuthError, httpx.HTTPError, ValueError) as exc:
-                logger.warning("Could not check organization access (%s).", type(exc).__name__)
+                reason = str(exc) if isinstance(exc, AuthError) else type(exc).__name__
+                logger.warning("Could not check organization access: %s", reason)
+                say(
+                    f"Could not check organization access: {reason} You are signed in. "
+                    "If the tools answer 403, connect this application to your organization "
+                    f"at https://{CONNECTIONS_HOST}, then run `deere-mcp login` again."
+                )
                 connections = None
             if connections:
                 host = (urlsplit(connections).hostname or "").lower()

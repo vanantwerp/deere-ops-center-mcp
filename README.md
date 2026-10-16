@@ -239,6 +239,14 @@ Everything works without these. Set them as environment variables, or in the `co
 
 **Claude Desktop says the server could not start.** Run `connect` (see "If you reinstall or move `uv`" above).
 
+**"command not found: uv" (or uvx) after installing it.** Your terminal does not see the folder uv was installed in. Close and reopen the terminal first. If that does not help, run this once, then open a new terminal:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+```
+
+On Windows, open a new PowerShell window; the installer updates the path for new windows only.
+
 **No browser opened during sign-in.** Copy the link printed in the terminal into any browser.
 
 **"Session expired."** Sign in again.

@@ -82,24 +82,59 @@ def resolve_source(explicit: str | None, env: Mapping[str, str]) -> str:
 
 
 def build_entry(
-    source: str, *, platform: str = sys.platform, which: Which = shutil.which
+    source: str,
+    *,
+    platform: str = sys.platform,
+    which: Which = shutil.which,
+    env: Mapping[str, str] | None = None,
+    home: Path | None = None,
 ) -> ServerEntry:
     """The entry that starts the server through ``uvx`` (or ``uv tool run``) from `source`.
 
     The program path is absolute: Claude Desktop does not see the shell's PATH. Symlinks are
     kept as they are (not resolved), so a package-manager upgrade of uv does not break it.
+
+    ``uvx`` is looked for on PATH first, then beside the ``uv`` that started this process
+    (``uv run`` sets the ``UV`` variable to its own path), then in uv's default install
+    folder. A terminal whose PATH lacks uv's folder is common right after installing uv.
     """
-    env = {"PYTHONUTF8": "1"} if platform == "win32" else {}
-    uvx = which("uvx")
+    entry_env = {"PYTHONUTF8": "1"} if platform == "win32" else {}
+    uvx = _find_uv_program("uvx", platform, which, env, home)
     if uvx:
-        return ServerEntry(os.path.abspath(uvx), ["--from", source, "deere-mcp"], env)
-    uv = which("uv")
+        return ServerEntry(uvx, ["--from", source, "deere-mcp"], entry_env)
+    uv = _find_uv_program("uv", platform, which, env, home)
     if uv:
-        return ServerEntry(os.path.abspath(uv), ["tool", "run", "--from", source, "deere-mcp"], env)
+        return ServerEntry(uv, ["tool", "run", "--from", source, "deere-mcp"], entry_env)
     raise ClientConfigError(
-        "uv was not found on PATH, so no AI app was changed. Install uv (see the README), "
-        "then close and reopen this window."
+        "uv was not found, so no AI app was changed. If uv is installed, run this again from "
+        "a terminal where `uv --version` works; otherwise install uv (see the README) and "
+        "close and reopen this window."
     )
+
+
+def _find_uv_program(
+    name: str,
+    platform: str,
+    which: Which,
+    env: Mapping[str, str] | None,
+    home: Path | None,
+) -> str | None:
+    """Absolute path of ``uvx`` or ``uv``: PATH, then next to the running uv, then ~/.local/bin."""
+    found = which(name)
+    if found:
+        return os.path.abspath(found)
+    exe = ".exe" if platform == "win32" else ""
+    environment = os.environ if env is None else env
+    running_uv = environment.get("UV")
+    candidates: list[Path] = []
+    if running_uv:
+        candidates.append(Path(running_uv).with_name(name + exe))
+    base = Path.home() if home is None else home
+    candidates.append(base / ".local" / "bin" / (name + exe))
+    for candidate in candidates:
+        if _is_file(candidate) and os.access(candidate, os.X_OK):
+            return os.path.abspath(candidate)
+    return None
 
 
 def claude_desktop_config_path(
