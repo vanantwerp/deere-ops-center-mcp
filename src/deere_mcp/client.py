@@ -17,6 +17,7 @@ from deere_mcp.config import Settings, is_allowed_host
 logger = logging.getLogger(__name__)
 
 MAX_MESSAGE = 500
+DEERE_TEXT_MAX = 150  # Deere's own error text, kept short so the hint always fits
 REFRESH_MARGIN = 60.0  # refresh proactively when the token expires within this many seconds
 MAX_REDIRECTS = 5
 
@@ -45,12 +46,10 @@ class PageResult:
 _HINTS = {
     401: "The John Deere sign-in has expired or was revoked. Run `deere-mcp login`.",
     403: (
-        "John Deere refused access. If every request is refused, the application's API access "
-        "has not been granted yet; if only one kind of data is refused (for example machines "
-        "while fields work), that API was not requested. Both are fixed on the application's "
-        "Access tab at developer.deere.com. If only one organization's data is refused, connect "
-        "the application to it at connections.deere.com, or run `deere-mcp login` and complete "
-        "the organization step."
+        "If everything is refused, the application's API access is not granted yet; if one kind "
+        "of data is refused, that API was not requested (both on the Access tab at "
+        "developer.deere.com). If one organization is refused, connect it at "
+        "connections.deere.com."
     ),
     404: "Not found. Check the ID; IDs come from the list tools.",
     429: "Too many requests to John Deere. Wait a minute and try again.",
@@ -92,13 +91,15 @@ def _deere_text(response: httpx.Response) -> str:
 def error_from_response(response: httpx.Response) -> DeereError:
     status = response.status_code
     reason = response.reason_phrase or ""
+    # Status, then Deere's own words, then the hint; sized so the whole message fits in
+    # MAX_MESSAGE without truncating Deere's text or the hint's final address.
     parts = [f"John Deere returned {status} {reason}".rstrip() + "."]
+    text = _trim(_deere_text(response), DEERE_TEXT_MAX)
+    if text:
+        parts.append(f"Deere said: {text}")
     hint = _HINTS.get(status)
     if hint:
         parts.append(hint)
-    text = _trim(_deere_text(response), MAX_MESSAGE)
-    if text:
-        parts.append(f"Deere said: {text}")
     return DeereError(status, " ".join(parts))
 
 
