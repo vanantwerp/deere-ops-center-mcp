@@ -87,12 +87,21 @@ def tool_errors(fn: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
 def resolve_output_path(settings: Settings, filename: str) -> Path:
     """The path for `filename` inside the output folder; refuses anything that lands outside."""
     output_dir = settings.output_dir.expanduser()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    base = output_dir.resolve()
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        base = output_dir.resolve()
+    except OSError as exc:
+        raise ToolError(
+            f"Could not use the output folder {output_dir} ({exc.strerror or exc}). "
+            "Check DEERE_OUTPUT_DIR."
+        ) from exc
     not_a_file = "The filename must name a file, not a folder, for example 'fields.csv'."
     if not filename or not filename.strip():
         raise ToolError(not_a_file)
-    candidate = (base / filename).resolve()
+    try:
+        candidate = (base / filename).resolve()
+    except (OSError, ValueError, RuntimeError):
+        raise ToolError("That filename is not valid.") from None
     if candidate == base:
         raise ToolError(not_a_file)
     if not candidate.is_relative_to(base):
@@ -100,5 +109,10 @@ def resolve_output_path(settings: Settings, filename: str) -> Path:
             f"Files can only be saved inside the output folder {base}. "
             "Use a plain file name such as 'fields.csv'."
         )
-    candidate.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ToolError(
+            f"Could not create the folder for that file ({exc.strerror or exc})."
+        ) from exc
     return candidate

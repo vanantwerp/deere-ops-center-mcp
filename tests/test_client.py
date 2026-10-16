@@ -342,3 +342,39 @@ async def test_followed_redirect_off_deere_is_refused(
         with pytest.raises(DeereError, match="Refused"):
             await client.request("GET", client.url("a"), follow_redirects=True)
     assert len(routes.requests) == 1
+
+
+async def test_get_json_follows_a_redirect_on_a_deere_host(
+    settings: Settings, saved_tokens: Tokens
+) -> None:
+    routes = (
+        RouteHandler()
+        .add(
+            "GET",
+            "/platform/old",
+            httpx.Response(302, headers={"location": "https://sandboxapi.deere.com/platform/new"}),
+        )
+        .add("GET", "/platform/new", json_response({"id": "moved"}))
+    )
+    async with make_client(settings, routes) as client:
+        data = await client.get_json(client.url("old"))
+    assert data == {"id": "moved"}
+    assert len(routes.requests) == 2
+
+
+async def test_logout_while_running_is_noticed(settings: Settings, saved_tokens: Tokens) -> None:
+    routes = RouteHandler().add("GET", ORGS, json_response(deere_list([{"id": "1"}])))
+    async with make_client(settings, routes) as client:
+        await client.get_json(client.url("organizations"))
+        TokenStore(settings.token_path).delete()  # what `deere-mcp logout` does
+        with pytest.raises(DeereError, match="Not signed in"):
+            await client.get_json(client.url("organizations"))
+    assert len(routes.requests) == 1
+
+
+async def test_malformed_url_is_a_readable_error(settings: Settings, saved_tokens: Tokens) -> None:
+    routes = RouteHandler()
+    async with make_client(settings, routes) as client:
+        with pytest.raises(DeereError, match="not a valid web address"):
+            await client.get_json("https://sandboxapi.deere.com:99x/platform/organizations")
+    assert routes.requests == []

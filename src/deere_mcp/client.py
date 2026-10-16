@@ -175,6 +175,8 @@ class DeereClient:
     # -- tokens ----------------------------------------------------------------------------
 
     async def _current_tokens(self) -> Tokens:
+        if self._tokens is not None and not self.store.path.exists():
+            self._tokens = None  # `deere-mcp logout` removed the sign-in while we were running
         if self._tokens is None:
             self._tokens = self.store.load()
         if self._tokens is None:
@@ -207,8 +209,12 @@ class DeereClient:
 
     @staticmethod
     def _check_host(url: str) -> None:
-        parts = urlsplit(url)
-        if parts.scheme != "https" or not is_allowed_host(parts.hostname):
+        try:
+            parts = urlsplit(url)
+            hostname = parts.hostname
+        except ValueError as exc:
+            raise DeereError(None, f"That is not a valid web address ({exc}).") from None
+        if parts.scheme != "https" or not is_allowed_host(hostname):
             raise DeereError(
                 None,
                 f"Refused to contact {parts.scheme}://{parts.hostname or '?'}: only https "
@@ -235,6 +241,8 @@ class DeereClient:
             raise DeereError(
                 None, f"John Deere did not answer within {self._timeout:g} seconds. Try again."
             ) from exc
+        except httpx.InvalidURL as exc:
+            raise DeereError(None, f"That is not a valid web address ({exc}).") from exc
         except httpx.HTTPError as exc:
             raise DeereError(
                 None, f"Could not reach John Deere ({type(exc).__name__}: {exc})."
@@ -283,7 +291,7 @@ class DeereClient:
         return response
 
     async def get_json(self, url: str, *, accept: str | None = None) -> Any:
-        response = await self.request("GET", url, accept=accept)
+        response = await self.request("GET", url, accept=accept, follow_redirects=True)
         try:
             return response.json()
         except ValueError:
@@ -295,7 +303,7 @@ class DeereClient:
             ) from None
 
     async def get_bytes(self, url: str, *, accept: str) -> tuple[bytes, str]:
-        response = await self.request("GET", url, accept=accept)
+        response = await self.request("GET", url, accept=accept, follow_redirects=True)
         return response.content, response.headers.get("content-type", "")
 
     async def get_all(self, url: str) -> PageResult:

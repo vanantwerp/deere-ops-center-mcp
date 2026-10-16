@@ -32,7 +32,11 @@ def resolve_target(base_url: str, url: str) -> str:
     url = url.strip()
     if not url:
         raise ToolError("url is required: an absolute Deere URL or a path such as /organizations.")
-    if urlsplit(url).scheme:
+    try:
+        has_scheme = bool(urlsplit(url).scheme)
+    except ValueError as exc:
+        raise ToolError(f"That is not a valid web address ({exc}).") from None
+    if has_scheme:
         # Scheme and host checks happen in the client, which is the one place that enforces them.
         return url
     base = urlsplit(base_url)

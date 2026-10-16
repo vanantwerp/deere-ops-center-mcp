@@ -8,6 +8,7 @@ import hmac
 import json
 import logging
 import secrets
+import socket
 import sys
 import time
 import webbrowser
@@ -380,13 +381,27 @@ class CallbackListener:
     def port(self) -> int:
         if self._server is None or not self._server.sockets:
             return self._requested_port
-        return int(self._server.sockets[0].getsockname()[1])
+        sockets = self._server.sockets
+        chosen = next((s for s in sockets if s.family == socket.AF_INET), sockets[0])
+        return int(chosen.getsockname()[1])
 
     async def start(self) -> None:
+        # The redirect URI says "localhost", which some browsers resolve to ::1 first, so a
+        # fixed port listens on both loopback addresses and falls back to IPv4 alone if the
+        # IPv6 loopback is unavailable. An ephemeral port (0, used by tests) stays IPv4 only
+        # so that `port` is unambiguous.
+        hosts: list[str] = [self._host]
+        if self._host == CALLBACK_HOST and self._requested_port != 0:
+            hosts.append("::1")
         try:
-            self._server = await asyncio.start_server(
-                self._handle, self._host, self._requested_port
-            )
+            try:
+                self._server = await asyncio.start_server(self._handle, hosts, self._requested_port)
+            except OSError:
+                if len(hosts) == 1:
+                    raise
+                self._server = await asyncio.start_server(
+                    self._handle, hosts[:1], self._requested_port
+                )
         except OSError as exc:
             raise AuthError(
                 f"Could not listen on port {self._requested_port} for the sign-in "

@@ -58,19 +58,10 @@ def _safe_name(value: str) -> str:
 
 
 def _target_path(settings: Settings, filename: str) -> Path:
-    """Resolve `filename` inside the output folder and make sure its folder exists."""
-    try:
-        path = resolve_output_path(settings, filename)
-    except ValueError as exc:
-        raise ToolError("That filename is not valid.") from exc
+    """Resolve `filename` inside the output folder (the helper creates folders and checks it)."""
+    path = resolve_output_path(settings, filename)
     if path.is_dir():
         raise ToolError("The filename must name a file, not a folder.")
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise ToolError(
-            f"Could not create the folder for that file: {exc.strerror or exc}"
-        ) from exc
     return path
 
 
