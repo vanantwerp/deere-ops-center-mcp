@@ -2,8 +2,6 @@
 
 Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Operations Center data: fields, field operations, equipment, work plans and more. It runs on your own computer. It can only read; it cannot change anything in Operations Center.
 
-Not made, supported or endorsed by Deere & Company.
-
 ---
 
 ## What you need
@@ -314,7 +312,7 @@ Only needed if `setup` did not find Claude Desktop (it never asked `Add the serv
 
 ## Privacy
 
-Your data moves between your computer and John Deere only. There is no third-party server. The AI app you connect sees what the tools return, under that app's own privacy terms. Only error messages are logged; sign-in tokens never are.
+Your data moves between your computer and John Deere only. There is no third-party server. The AI app you connect sees what the tools return. Only error messages are logged; sign-in tokens never are.
 
 ---
 
