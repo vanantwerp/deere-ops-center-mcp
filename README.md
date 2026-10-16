@@ -31,18 +31,12 @@ The same on every platform. You do it once.
 
 5. Click **Next**. Deere now offers to request API access. You can do it here, or later from the application's page (**My Applications**, **View Details**, the **Access** tab, **Request Access**). In that screen, choose **Precision Tech** on the left, tick a category to list its APIs, expand each API below and tick only the permission named. Every one of them is a read permission; tick nothing marked Write or Delete.
 
-   The minimum, for field history and analysis:
-
    | Category | API | Permission to tick |
    |---|---|---|
+   | Organization/User | Operations Center - Organizations | Organizations Read |
    | Setup/Plan | Operations Center - Fields | Fields Read |
    | Setup/Plan | Operations Center - Boundaries | Boundaries Read |
-   | Work Results | Operations Center - Field Operations | Field Operations Read, and Field Operations Export Read if you want yield-map file downloads |
-
-   For everything else this tool can do:
-
-   | Category | API | Permission to tick |
-   |---|---|---|
+   | Work Results | Operations Center - Field Operations | Field Operations Read and Field Operations Export Read |
    | Equipment | Operations Center - Equipment | Equipment Read |
    | Equipment | Operations Center - Machine Alerts | Alerts Read |
    | Equipment | Operations Center - Machine Engine Hours | Engine Hours Read |
@@ -54,7 +48,7 @@ The same on every platform. You do it once.
    | Setup/Plan | Operations Center - Products | Products Read |
    | Setup/Plan | Operations Center - Guidance Lines | Guidance Lines Read |
 
-   Deere grants **Operations Center - Organizations** (Organizations Read) automatically with any of these; ticking it as well does no harm. Request nothing else. The requests show as **Pending** on the Access tab until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
+   Request nothing else. The requests show as **Pending** on the Access tab until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
 
 6. Open the application's **View Details** page. Its **Security** section shows the **Application ID** and the **Secret**. Keep both for Step 2. Treat the Secret like a password.
 
