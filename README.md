@@ -48,6 +48,8 @@ The same on every platform. You do it once.
    | Setup/Plan | Operations Center - Products | Products Read |
    | Setup/Plan | Operations Center - Guidance Lines | Guidance Lines Read |
 
+   Deere asks for a written business use case before granting **Work Plans** (what the plans are for, and whether the grower or a service provider carries them out). Skip it if you do not use work plans in Operations Center; nothing else depends on it.
+
    Request nothing else. The requests show as **Pending** on the Access tab until Deere approves them, which can take up to a day, and an approval takes a few more minutes to reach the API. You can finish Step 2 meanwhile. Once the requests show as approved, run the `login` command from Everyday use once more: that is when John Deere asks which of your organizations the application may see. Until then every request is refused with "403 Forbidden".
 
 6. Open the application's **View Details** page. Its **Security** section shows the **Application ID** and the **Secret**. Keep both for Step 2. Treat the Secret like a password.
@@ -353,10 +355,10 @@ git clone https://github.com/vanantwerp/deere-ops-center-mcp
 cd deere-ops-center-mcp
 uv sync
 uv run pytest
-uv run deere-mcp setup
+uv run deere-mcp setup --source .
 ```
 
-The tests use a fake John Deere, so they need no account. Before a pull request, run `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest -q`, the same checks CI runs.
+`--source .` makes Claude Desktop run your checkout instead of the published version; edits take effect the next time Claude Desktop starts the server. The tests use a fake John Deere, so they need no account. Before a pull request, run `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest -q`, the same checks CI runs.
 
 Rules that keep the tool safe:
 
