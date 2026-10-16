@@ -48,7 +48,7 @@ The same on every platform. You do it once.
    | Setup/Plan | Operations Center - Products | Products Read |
    | Setup/Plan | Operations Center - Guidance Lines | Guidance Lines Read |
 
-   Request nothing else. The requests show as **Pending** on the Access tab until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
+   Request nothing else. The requests show as **Pending** on the Access tab until Deere approves them, which can take up to a day, and an approval takes a few more minutes to reach the API. You can finish Step 2 meanwhile. Once the requests show as approved, run the `login` command from Everyday use once more: that is when John Deere asks which of your organizations the application may see. Until then every request is refused with "403 Forbidden".
 
 6. Open the application's **View Details** page. Its **Security** section shows the **Application ID** and the **Secret**. Keep both for Step 2. Treat the Secret like a password.
 
@@ -75,7 +75,7 @@ New applications run against John Deere's sandbox, which uses your real organiza
    The first run downloads the tool. Setup then:
 
    - asks for your Application ID, then your Secret. Paste each and press Return. The Secret does not show as you paste it.
-   - opens your browser to sign in to John Deere. The first time, John Deere also asks which of your organizations the application may see. Choose them and confirm.
+   - opens your browser to sign in to John Deere. Once Deere has approved the API access, John Deere also asks which of your organizations the application may see. Choose them and confirm.
    - asks `Add the server to Claude Desktop? [Y/n]`. Press Return for yes.
    - if Claude Code is installed, asks `Also add it to Claude Code? [Y/n]`. Press Return for yes, or type `n` and Return.
 
@@ -106,7 +106,7 @@ New applications run against John Deere's sandbox, which uses your real organiza
    The first run downloads the tool. Setup then:
 
    - asks for your Application ID, then your Secret. Paste each and press Enter. The Secret does not show as you paste it.
-   - opens your browser to sign in to John Deere. The first time, John Deere also asks which of your organizations the application may see. Choose them and confirm.
+   - opens your browser to sign in to John Deere. Once Deere has approved the API access, John Deere also asks which of your organizations the application may see. Choose them and confirm.
    - asks `Add the server to Claude Desktop? [Y/n]`. Press Enter for yes.
    - if Claude Code is installed, asks `Also add it to Claude Code? [Y/n]`. Press Enter for yes, or type `n` and Enter.
 
