@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# Local secrets and state
+.env
+*.local.toml
+
+# Planning notes kept out of the public repository
+notes/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/

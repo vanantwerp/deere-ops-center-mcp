@@ -1,0 +1,52 @@
+[project]
+name = "deere-ops-center-mcp"
+version = "0.1.0"
+description = "A local, read-only MCP server for John Deere Operations Center data."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Deere Ops Center MCP contributors" }]
+keywords = ["mcp", "john-deere", "operations-center", "agriculture"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Private :: Do Not Upload",
+]
+dependencies = [
+    "mcp>=2.3,<3",
+    "httpx>=0.28,<1",
+    "platformdirs>=4.3,<5",
+]
+
+[project.scripts]
+deere-mcp = "deere_mcp.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deere_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "N"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["deere_mcp", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["anyio: run the test under anyio"]
