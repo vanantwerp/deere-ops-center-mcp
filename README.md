@@ -19,8 +19,8 @@ Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Op
 The same on every platform. You do it once.
 
 1. Sign in at [developer.deere.com](https://developer.deere.com) with your John Deere account.
-2. Open **My Applications**, choose **Create Application**, and give it any name.
-3. Under **Redirect URIs**, add this exact address:
+2. Create a new application (under **My Applications**) and give it any name.
+3. Find the application's redirect URI setting and add this exact address:
 
    ```
    http://localhost:9090/callback
@@ -30,7 +30,7 @@ The same on every platform. You do it once.
 
 4. Save. The page shows an **Application ID** and a **Secret**. Keep both for Step 2. Treat the Secret like a password.
 
-New applications start in John Deere's sandbox: real data from your real organizations, limited to 5 connected organizations and 150,000 requests per month.
+New applications start in John Deere's sandbox, which works with your real organizations within limits Deere sets.
 
 ---
 
@@ -114,7 +114,7 @@ New applications start in John Deere's sandbox: real data from your real organiz
 
    Setup asks for your Application ID and Secret (the Secret does not show as you paste it), opens your browser to sign in to John Deere and choose your organization, and, if Claude Code is installed, asks `Also add it to Claude Code? [Y/n]`. If no browser opens, copy the link the terminal prints into one. It ends with `Signed in.`
 
-3. **Connect your AI app.** Claude Desktop is not available on Linux. If you answered yes for Claude Code, it is connected. Otherwise use the command in the next section, or give any other MCP app the command `uvx` with the arguments `--from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp`.
+3. **Connect your AI app.** If setup found Claude Desktop or you answered yes for Claude Code, that app is connected. Otherwise use the command in the next section, or give any other MCP app the command `uvx` with the arguments `--from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp`.
 
 ---
 
@@ -237,7 +237,7 @@ Everything works without these. Set them as environment variables, or in the `co
 
 **The organization list is empty, or you get "403 Forbidden".** The application is not connected to your organization yet. Sign in again and complete the organization page John Deere shows, or connect it at connections.deere.com.
 
-**Claude Desktop says the server could not start.** Run `connect` (see "If you reinstall or move `uv`" above). Claude Desktop's logs are under `~/Library/Logs/Claude` on macOS and `%APPDATA%\Claude\logs` on Windows.
+**Claude Desktop says the server could not start.** Run `connect` (see "If you reinstall or move `uv`" above).
 
 **No browser opened during sign-in.** Copy the link printed in the terminal into any browser.
 
