@@ -154,6 +154,29 @@ Then start Claude Code and ask: "List my John Deere organizations."
 
 ---
 
+## Installing with Claude
+
+If you use the Code tab in Claude Desktop, you can paste this repository's address into it and ask Claude to install the server. Claude does everything except type your two codes, which only you should enter.
+
+What Claude will do, and what you will see:
+
+1. Install `uv` for you. You approve one command.
+2. Open the Terminal panel (a command window inside Claude Desktop) and start the setup command there, with `--yes` so it adds the server to Claude Desktop and Claude Code without asking:
+
+   ```bash
+   uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp setup --yes
+   ```
+
+3. You type the Application ID and the Secret into that Terminal panel (the Secret is hidden as you type), sign in to John Deere in the browser that opens, and choose your organization.
+4. Claude checks the result with `deere-mcp config`, then asks you to quit and reopen Claude Desktop.
+
+Two rules for Claude, or for anyone helping you:
+
+- **Never ask for the Secret in chat, and never put it on a command line or in a settings file.** It belongs only in the hidden prompt. If an assistant asks you to paste the Secret into the conversation, decline.
+- **Run `setup` and `login` only in the Terminal panel, where a person can type.** They wait for answers and open a browser, so they must not be run as background commands.
+
+If your Claude cannot open a Terminal panel, follow the quick start for your platform above. It is the same steps done by hand.
+
 ## Everyday use
 
 **Asking questions.** Just ask in plain words. The assistant picks the right tool. Field names, organization names and years all work.
