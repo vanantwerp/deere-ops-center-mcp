@@ -29,7 +29,7 @@ The same on every platform. You do it once.
    It must match character for character. It only works on your own computer; it is how John Deere hands the sign-in back to the tool.
 
 4. Save.
-5. Give the application access to the APIs. Open the application (**View Details**), go to its **Access** tab and choose **Request Access**, then select the Operations Center APIs: organizations, fields, field operations, equipment and machine data, work plans, operators, products and guidance lines. Some are granted at once; Deere says others can take up to a day. Until this is done, every request is refused with "403 Forbidden".
+5. Give the application access to the APIs. Open the application (**View Details**), go to its **Access** tab and choose **Request Access**, then select the Operations Center APIs: organizations, fields, field operations, equipment and machine data, work plans, operators, products and guidance lines. The requests show as pending until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
 6. The application's page shows an **Application ID** and a **Secret**. Keep both for Step 2. Treat the Secret like a password.
 
 New applications start in John Deere's sandbox, which works with your real organizations within limits Deere sets.

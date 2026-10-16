@@ -378,3 +378,13 @@ async def test_malformed_url_is_a_readable_error(settings: Settings, saved_token
         with pytest.raises(DeereError, match="not a valid web address"):
             await client.get_json("https://sandboxapi.deere.com:99x/platform/organizations")
     assert routes.requests == []
+
+
+async def test_403_hint_names_both_causes(settings: Settings, saved_tokens: Tokens) -> None:
+    routes = RouteHandler().add("GET", ORGS, httpx.Response(403, text="Forbidden"))
+    async with make_client(settings, routes) as client:
+        with pytest.raises(DeereError) as excinfo:
+            await client.get_json(client.url("organizations"))
+    message = str(excinfo.value)
+    assert "Access tab" in message
+    assert "connections.deere.com" in message

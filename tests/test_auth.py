@@ -411,3 +411,4 @@ async def test_login_reports_a_failed_organization_check(settings: Settings) -> 
     report = next(line for line in lines if line.startswith("Could not check organization access"))
     assert "403" in report
     assert "connections.deere.com" in report
+    assert "Access tab" in report

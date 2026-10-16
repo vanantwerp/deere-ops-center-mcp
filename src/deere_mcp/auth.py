@@ -535,6 +535,13 @@ async def find_connections_link(
         if url is None or not is_allowed_host(urlsplit(url).hostname):
             return None
         response = await http.get(url, headers=headers)
+        if response.status_code == 403:
+            raise AuthError(
+                "John Deere answered 403 to the organization list. If this application's API "
+                "access is still pending on developer.deere.com (the application's Access tab), "
+                "wait for Deere to approve it; otherwise connect the application to your "
+                f"organization at https://{CONNECTIONS_HOST}."
+            )
         if response.status_code >= 400:
             raise AuthError(f"John Deere answered {response.status_code} to the organization list.")
         data = response.json()
