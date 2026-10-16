@@ -133,7 +133,7 @@ def error_from_response(response: httpx.Response) -> DeereError:
     parts = [f"John Deere returned {status} {reason}".rstrip() + "."]
     text = _trim(_deere_text(response), DEERE_TEXT_MAX)
     if text:
-        parts.append(f"Deere said: {text}")
+        parts.append(f"Deere said: {text}" + ("" if text.endswith((".", "!", "?")) else "."))
     hint = forbidden_hint(response) if status == 403 else _HINTS.get(status)
     if hint:
         parts.append(hint)
