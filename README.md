@@ -326,7 +326,18 @@ uv run pytest
 uv run deere-mcp setup
 ```
 
-Each tool is one function in `src/deere_mcp/tools/`, with a docstring that becomes the description the assistant sees. See `CONTRIBUTING.md` for how to add one and `SECURITY.md` for how to report a problem.
+The tests use a fake John Deere, so they need no account. Before a pull request, run `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest -q`, the same checks CI runs.
+
+Rules that keep the tool safe:
+
+- Tools only read. The sign-in asks for read permissions and that stays true.
+- No real Application IDs, Secrets, tokens or farm data anywhere in the repository. Use made-up values.
+- No `print()` under `src/` except in `cli.py`; the server talks to the AI app over standard output.
+- Never log tokens, secrets, or request or response bodies.
+
+To add a tool, copy a small one such as `src/deere_mcp/tools/operators.py`. Its docstring is the description the assistant reads, so say what it returns, where its IDs come from, and any limit John Deere sets. Build addresses with `client.url(...)`, return a `dict`, raise `ToolError` for anything the assistant should read as a failure, and write files only through `resolve_output_path`. Add a test with the `mcp_client` fixture and note the change in `CHANGELOG.md`.
+
+Found a security problem? Report it privately through the repository's **Security** tab on GitHub, not in a public issue, and leave real codes and tokens out of the report.
 
 ## Acknowledgements
 
