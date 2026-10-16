@@ -1,6 +1,6 @@
 # Deere Ops Center MCP
 
-Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Operations Center data: your fields and boundaries, each tillage, planting, application and harvest pass with its totals, your machines and their health, plus the products, operators, guidance lines and work plans behind them. It runs on your own computer. It can only read; it cannot change anything in Operations Center. The only thing it writes on your computer is the files you ask it to save, in one output folder.
+Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Operations Center data: your fields and boundaries, each tillage, planting, application and harvest pass with its totals, your machines and their health, plus the products, operators, guidance lines and work plans behind them. It runs on your own computer. It can only read; it cannot change anything in Operations Center.
 
 ---
 
@@ -346,7 +346,7 @@ Only needed if `setup` did not find Claude Desktop (it never asked `Add the serv
 
 ## Privacy
 
-Your data moves between your computer and John Deere only. There is no third-party server. The AI app you connect sees what the tools return. Only error messages are logged; sign-in tokens never are.
+Your data moves between your computer and John Deere only. There is no third-party server. The AI app you connect sees what the tools return. Only error messages are logged; sign-in tokens never are. During use, the tools write only the files you ask for, in your output folder; setup writes its own settings and tokens in the folder shown by `deere-mcp config`.
 
 ---
 
