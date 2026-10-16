@@ -48,7 +48,9 @@ The same on every platform. You do it once.
    | Setup/Plan | Operations Center - Products | Products Read |
    | Setup/Plan | Operations Center - Guidance Lines | Guidance Lines Read |
 
-   Deere asks for a written business use case before granting **Work Plans** (what the plans are for, and whether the grower or a service provider carries them out). Skip it if you do not use work plans in Operations Center; nothing else depends on it.
+   Deere asks for a written business use case before granting **Work Plans**. Skip it if you do not use work plans in Operations Center; nothing else depends on it. If you want it, Deere emails you after you request it, and this answers the questions it asks:
+
+   > The application is a read-only connector that lets a grower view their own Operations Center data in an AI assistant running on their own computer. Work Plans access is read-only (Workplans Read): it lists and displays the organization's existing work plans next to its fields and field operations, so the grower can compare what was planned with what was done. It does not create, edit, assign or execute work plans and cannot write anything to Operations Center. No plans are created through the application, by a grower or by a service provider; plans continue to be created in Operations Center as today.
 
    Request nothing else. The requests show as **Pending** on the Access tab until Deere approves them, which can take up to a day, and an approval takes a few more minutes to reach the API. You can finish Step 2 meanwhile. Once the requests show as approved, run the `login` command from Everyday use once more: that is when John Deere asks which of your organizations the application may see. Until then every request is refused with "403 Forbidden".
 
