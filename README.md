@@ -29,30 +29,32 @@ The same on every platform. You do it once.
 
    It must match character for character. It only works on your own computer; it is how John Deere hands the sign-in back to the tool.
 
-5. Click **Next**. Deere now offers to request API access. You can do it here, or later from the application's page (**My Applications**, **View Details**, the **Access** tab, **Request Access**). Request only the APIs below, by these exact names.
+5. Click **Next**. Deere now offers to request API access. You can do it here, or later from the application's page (**My Applications**, **View Details**, the **Access** tab, **Request Access**). In that screen, choose **Precision Tech** on the left, tick a category to list its APIs, expand each API below and tick only the permission named. Every one of them is a read permission; tick nothing marked Write or Delete.
 
-   For field history and analysis, the minimum:
+   The minimum, for field history and analysis:
 
-   - Operations Center - Fields
-   - Operations Center - Boundaries
-   - Operations Center - Field Operations
+   | Category | API | Permission to tick |
+   |---|---|---|
+   | Setup/Plan | Operations Center - Fields | Fields Read |
+   | Setup/Plan | Operations Center - Boundaries | Boundaries Read |
+   | Work Results | Operations Center - Field Operations | Field Operations Read, and Field Operations Export Read if you want yield-map file downloads |
 
-   For everything this tool can do, also:
+   For everything else this tool can do:
 
-   - Operations Center - Equipment
-   - Operations Center - Machine Alerts
-   - Operations Center - Machine Engine Hours
-   - Operations Center - Machine Hours Of Operation
-   - Operations Center - Machine Locations
-   - Operations Center - Machine Device State Reports
-   - Operations Center - Work Plans
-   - Operations Center - Operators
-   - Operations Center - Products
-   - Operations Center - Guidance Lines
+   | Category | API | Permission to tick |
+   |---|---|---|
+   | Equipment | Operations Center - Equipment | Equipment Read |
+   | Equipment | Operations Center - Machine Alerts | Alerts Read |
+   | Equipment | Operations Center - Machine Engine Hours | Engine Hours Read |
+   | Equipment | Operations Center - Machine Hours Of Operation | Hours Of Operation Read |
+   | Equipment | Operations Center - Machine Locations | Location History Read |
+   | Equipment | Operations Center - Machine Device State Reports | Device State Reports Read |
+   | Setup/Plan | Operations Center - Work Plans | Workplans Read |
+   | Setup/Plan | Operations Center - Operators | Operators Read |
+   | Setup/Plan | Operations Center - Products | Products Read |
+   | Setup/Plan | Operations Center - Guidance Lines | Guidance Lines Read |
 
-   Each API offers several permissions, with names like "Boundaries Read", "Boundary Read", "Boundaries Write" and "Boundaries Delete". This tool only reads, so for each API tick every permission whose name ends in **Read**, and none that say Write, Create, Update or Delete.
-
-   Do not request any other API; Deere asks applications to request only what they use. Access to Organizations comes automatically with any API you are granted, so you do not need to request it (if it is offered, its Read permission does no harm). The requests show as **Pending** until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
+   Deere grants **Operations Center - Organizations** (Organizations Read) automatically with any of these; ticking it as well does no harm. Request nothing else. The requests show as **Pending** on the Access tab until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
 
 6. Open the application's **View Details** page. Its **Security** section shows the **Application ID** and the **Secret**. Keep both for Step 2. Treat the Secret like a password.
 
