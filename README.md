@@ -19,8 +19,9 @@ Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Op
 The same on every platform. You do it once.
 
 1. Sign in at [developer.deere.com](https://developer.deere.com) with your John Deere account.
-2. Create a new application (under **My Applications**) and give it any name.
-3. Find the application's redirect URI setting and add this exact address:
+2. Open **My Applications** and click **Create Application**. Accept the API Development License Agreement when it is shown.
+3. Fill in the application details. Deere asks for a real name rather than "test", for example your farm's name, and a one-line description such as "Reads my Operations Center data for analysis".
+4. For the **Redirect URI**, enter exactly:
 
    ```
    http://localhost:9090/callback
@@ -28,11 +29,32 @@ The same on every platform. You do it once.
 
    It must match character for character. It only works on your own computer; it is how John Deere hands the sign-in back to the tool.
 
-4. Save.
-5. Give the application access to the APIs. Open the application (**View Details**), go to its **Access** tab and choose **Request Access**, then select the Operations Center APIs: organizations, fields, field operations, equipment and machine data, work plans, operators, products and guidance lines. The requests show as pending until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
-6. The application's page shows an **Application ID** and a **Secret**. Keep both for Step 2. Treat the Secret like a password.
+5. Click **Next**. Deere now offers to request API access. You can do it here, or later from the application's page (**My Applications**, **View Details**, the **Access** tab, **Request Access**). Request only the APIs below, by these exact names.
 
-New applications start in John Deere's sandbox, which works with your real organizations within limits Deere sets.
+   For field history and analysis, the minimum:
+
+   - Operations Center - Fields
+   - Operations Center - Boundaries
+   - Operations Center - Field Operations
+
+   For everything this tool can do, also:
+
+   - Operations Center - Equipment
+   - Operations Center - Machine Alerts
+   - Operations Center - Machine Engine Hours
+   - Operations Center - Machine Hours Of Operation
+   - Operations Center - Machine Locations
+   - Operations Center - Machine Device State Reports
+   - Operations Center - Work Plans
+   - Operations Center - Operators
+   - Operations Center - Products
+   - Operations Center - Guidance Lines
+
+   Do not request anything else; Deere asks applications to request only what they use. Access to Organizations comes automatically with any of these. The requests show as **Pending** until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
+
+6. Open the application's **View Details** page. Its **Security** section shows the **Application ID** and the **Secret**. Keep both for Step 2. Treat the Secret like a password.
+
+New applications run against John Deere's sandbox, which uses your real organizations and data. Deere limits how long an application may stay in the sandbox (six months at the time of writing) and how much it may call; after that you ask Deere to move it to production or to grant an exception. See Deere's [getting started page](https://developer.deere.com/precision/get-started) for the current rules.
 
 ---
 

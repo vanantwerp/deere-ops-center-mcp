@@ -46,9 +46,11 @@ _HINTS = {
     401: "The John Deere sign-in has expired or was revoked. Run `deere-mcp login`.",
     403: (
         "John Deere refused access. If every request is refused, the application's API access "
-        "has not been granted yet (developer.deere.com, the application's Access tab). If only "
-        "one organization's data is refused, connect the application to it at "
-        "connections.deere.com, or run `deere-mcp login` and complete the organization step."
+        "has not been granted yet; if only one kind of data is refused (for example machines "
+        "while fields work), that API was not requested. Both are fixed on the application's "
+        "Access tab at developer.deere.com. If only one organization's data is refused, connect "
+        "the application to it at connections.deere.com, or run `deere-mcp login` and complete "
+        "the organization step."
     ),
     404: "Not found. Check the ID; IDs come from the list tools.",
     429: "Too many requests to John Deere. Wait a minute and try again.",
