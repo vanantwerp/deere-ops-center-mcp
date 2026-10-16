@@ -50,7 +50,9 @@ The same on every platform. You do it once.
    - Operations Center - Products
    - Operations Center - Guidance Lines
 
-   Do not request anything else; Deere asks applications to request only what they use. Access to Organizations comes automatically with any of these. The requests show as **Pending** until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
+   Each API offers several permissions, with names like "Boundaries Read", "Boundary Read", "Boundaries Write" and "Boundaries Delete". This tool only reads, so for each API tick every permission whose name ends in **Read**, and none that say Write, Create, Update or Delete.
+
+   Do not request any other API; Deere asks applications to request only what they use. Access to Organizations comes automatically with any API you are granted, so you do not need to request it (if it is offered, its Read permission does no harm). The requests show as **Pending** until Deere approves them, which can take up to a day. You can finish Step 2 meanwhile; the tools start working once access is granted. Until then every request is refused with "403 Forbidden".
 
 6. Open the application's **View Details** page. Its **Security** section shows the **Application ID** and the **Secret**. Keep both for Step 2. Treat the Secret like a password.
 
