@@ -385,15 +385,33 @@ async def test_logout_without_file_returns_false(settings: Settings) -> None:
     assert routes.requests == []
 
 
+@pytest.mark.parametrize(
+    ("refusal", "expected"),
+    [
+        (
+            httpx.Response(403, json={"message": "nope"}),
+            ["403", "connections.deere.com", "Access tab"],
+        ),
+        (
+            httpx.Response(
+                403, text="Forbidden", headers={"response-code-details": "ext_authz_denied"}
+            ),
+            ["Organizations Read", "Access tab"],
+        ),
+    ],
+    ids=["from-deere", "from-gateway"],
+)
 @pytest.mark.anyio
-async def test_login_reports_a_failed_organization_check(settings: Settings) -> None:
+async def test_login_reports_a_failed_organization_check(
+    settings: Settings, refusal: httpx.Response, expected: list[str]
+) -> None:
     port = _free_port()
     settings = replace(settings, callback_port=port)
     store = TokenStore(settings.token_path)
     routes = RouteHandler().add_oauth(
         httpx.Response(200, json={"access_token": "a", "refresh_token": "r", "expires_in": 9})
     )
-    routes.add("GET", "/platform/organizations", httpx.Response(403, json={"message": "nope"}))
+    routes.add("GET", "/platform/organizations", refusal)
     lines: list[str] = []
     async with httpx.AsyncClient(transport=httpx.MockTransport(routes)) as http:
         task = asyncio.create_task(
@@ -409,6 +427,5 @@ async def test_login_reports_a_failed_organization_check(settings: Settings) -> 
 
     assert store.load() == tokens  # signed in regardless
     report = next(line for line in lines if line.startswith("Could not check organization access"))
-    assert "403" in report
-    assert "connections.deere.com" in report
-    assert "Access tab" in report
+    for text in expected:
+        assert text in report

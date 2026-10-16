@@ -43,6 +43,18 @@ class PageResult:
     pages: int
 
 
+GATEWAY_HEADER = "response-code-details"  # set by Deere's gateway on every answer
+GATEWAY_DENIED = "ext_authz_denied"  # the gateway refused before Deere's service saw the request
+
+NOT_GRANTED = (
+    "John Deere's gateway refused {what} for this application, so that API access has not "
+    "been requested or approved on the Access tab at developer.deere.com."
+)
+NOT_CONNECTED = (
+    "The application is not connected to this organization, or your John Deere user lacks "
+    "the permission. Connect it at connections.deere.com."
+)
+
 _HINTS = {
     401: "The John Deere sign-in has expired or was revoked. Run `deere-mcp login`.",
     403: (
@@ -54,6 +66,31 @@ _HINTS = {
     404: "Not found. Check the ID; IDs come from the list tools.",
     429: "Too many requests to John Deere. Wait a minute and try again.",
 }
+
+
+def forbidden_hint(response: httpx.Response) -> str:
+    """The 403 hint, made specific when Deere's gateway says who refused.
+
+    The gateway refuses by itself (ext_authz_denied) when the application has not been granted
+    the API; a refusal that reached Deere's service is about the organization or the user.
+    Without the header, name both causes.
+    """
+    where = response.headers.get(GATEWAY_HEADER)
+    if where == GATEWAY_DENIED:
+        path = ""
+        try:
+            path = response.request.url.path
+        except RuntimeError:  # a response built without a request
+            pass
+        what = (
+            "the organization list (Organizations Read)"
+            if path.rstrip("/").endswith("/organizations")
+            else "this API"
+        )
+        return NOT_GRANTED.format(what=what)
+    if where:
+        return NOT_CONNECTED
+    return _HINTS[403]
 
 
 def _deere_text(response: httpx.Response) -> str:
@@ -97,7 +134,7 @@ def error_from_response(response: httpx.Response) -> DeereError:
     text = _trim(_deere_text(response), DEERE_TEXT_MAX)
     if text:
         parts.append(f"Deere said: {text}")
-    hint = _HINTS.get(status)
+    hint = forbidden_hint(response) if status == 403 else _HINTS.get(status)
     if hint:
         parts.append(hint)
     return DeereError(status, " ".join(parts))

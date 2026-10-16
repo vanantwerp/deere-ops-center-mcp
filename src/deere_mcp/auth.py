@@ -536,6 +536,12 @@ async def find_connections_link(
             return None
         response = await http.get(url, headers=headers)
         if response.status_code == 403:
+            if response.headers.get("response-code-details") == "ext_authz_denied":
+                raise AuthError(
+                    "John Deere's gateway refused the organization list, so this application "
+                    "has not been granted Organizations Read yet. Request it on the Access tab "
+                    "at developer.deere.com, or wait for an approved request to take effect."
+                )
             raise AuthError(
                 "John Deere answered 403 to the organization list. If this application's API "
                 "access is still pending on developer.deere.com (the application's Access tab), "

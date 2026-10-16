@@ -388,3 +388,53 @@ async def test_403_hint_names_both_causes(settings: Settings, saved_tokens: Toke
     message = str(excinfo.value)
     assert "Access tab" in message
     assert "connections.deere.com" in message
+
+
+async def test_403_from_the_gateway_means_the_api_is_not_granted(
+    settings: Settings, saved_tokens: Tokens
+) -> None:
+    denied = httpx.Response(
+        403, text="Forbidden", headers={"response-code-details": "ext_authz_denied"}
+    )
+    routes = RouteHandler().add("GET", ORGS, denied)
+    async with make_client(settings, routes) as client:
+        with pytest.raises(DeereError) as excinfo:
+            await client.get_json(client.url("organizations"))
+    message = str(excinfo.value)
+    assert "Organizations Read" in message
+    assert "Access tab" in message
+    assert "connections.deere.com" not in message
+
+
+async def test_403_from_the_gateway_on_another_api(
+    settings: Settings, saved_tokens: Tokens
+) -> None:
+    denied = httpx.Response(
+        403, text="Forbidden", headers={"response-code-details": "ext_authz_denied"}
+    )
+    routes = RouteHandler().add("GET", "/platform/organizations/1/products", denied)
+    async with make_client(settings, routes) as client:
+        with pytest.raises(DeereError) as excinfo:
+            await client.get_json(client.url("organizations", "1", "products"))
+    message = str(excinfo.value)
+    assert "this API" in message
+    assert "Organizations Read" not in message
+    assert "Access tab" in message
+
+
+async def test_403_from_deere_itself_means_not_connected(
+    settings: Settings, saved_tokens: Tokens
+) -> None:
+    refused = httpx.Response(
+        403,
+        json={"errors": [{"message": "You do not have authorization"}]},
+        headers={"response-code-details": "via_upstream"},
+    )
+    routes = RouteHandler().add("GET", "/platform/organizations/1/fields", refused)
+    async with make_client(settings, routes) as client:
+        with pytest.raises(DeereError) as excinfo:
+            await client.get_json(client.url("organizations", "1", "fields"))
+    message = str(excinfo.value)
+    assert "You do not have authorization" in message
+    assert "connections.deere.com" in message
+    assert "Access tab" not in message

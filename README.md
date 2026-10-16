@@ -257,7 +257,7 @@ Everything works without these. Set them as environment variables, or in the `co
 
 **"redirect_uri mismatch" or "invalid redirect" during sign-in.** The Redirect URI in your John Deere application is not exactly `http://localhost:9090/callback`. Fix it there and sign in again.
 
-**"403 Forbidden" on everything, including listing organizations.** The application has not been given API access yet: see step 5 of Step 1. **The organization list works but data for an organization is refused.** The application is not connected to that organization yet. Sign in again and complete the organization page John Deere shows, or connect it at connections.deere.com.
+**"403 Forbidden" on everything, including listing organizations.** The application has not been granted the API access yet, most often Organizations Read: see step 5 of Step 1. Approved requests can take a while to take effect. **One kind of data is refused.** That API is missing from the application's approved list. **The organization list works but data for an organization is refused.** The application is not connected to that organization yet. Sign in again and complete the organization page John Deere shows, or connect it at connections.deere.com.
 
 **Claude Desktop says the server could not start.** Run `connect` (see "If you reinstall or move `uv`" above).
 
