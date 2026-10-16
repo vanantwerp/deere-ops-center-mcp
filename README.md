@@ -28,7 +28,9 @@ The same on every platform. You do it once.
 
    It must match character for character. It only works on your own computer; it is how John Deere hands the sign-in back to the tool.
 
-4. Save. The page shows an **Application ID** and a **Secret**. Keep both for Step 2. Treat the Secret like a password.
+4. Save.
+5. Give the application access to the APIs. Open the application (**View Details**), go to its **Access** tab and choose **Request Access**, then select the Operations Center APIs: organizations, fields, field operations, equipment and machine data, work plans, operators, products and guidance lines. Some are granted at once; Deere says others can take up to a day. Until this is done, every request is refused with "403 Forbidden".
+6. The application's page shows an **Application ID** and a **Secret**. Keep both for Step 2. Treat the Secret like a password.
 
 New applications start in John Deere's sandbox, which works with your real organizations within limits Deere sets.
 
@@ -235,7 +237,7 @@ Everything works without these. Set them as environment variables, or in the `co
 
 **"redirect_uri mismatch" or "invalid redirect" during sign-in.** The Redirect URI in your John Deere application is not exactly `http://localhost:9090/callback`. Fix it there and sign in again.
 
-**The organization list is empty, or you get "403 Forbidden".** The application is not connected to your organization yet. Sign in again and complete the organization page John Deere shows, or connect it at connections.deere.com.
+**"403 Forbidden" on everything, including listing organizations.** The application has not been given API access yet: see step 5 of Step 1. **The organization list works but data for an organization is refused.** The application is not connected to that organization yet. Sign in again and complete the organization page John Deere shows, or connect it at connections.deere.com.
 
 **Claude Desktop says the server could not start.** Run `connect` (see "If you reinstall or move `uv`" above).
 
