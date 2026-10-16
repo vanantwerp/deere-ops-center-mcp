@@ -1,7 +1,7 @@
 [project]
 name = "deere-ops-center-mcp"
 version = "0.1.0"
-description = "A local, read-only MCP server for John Deere Operations Center data."
+description = "Read-only access to your John Deere Operations Center data for Claude and other AI assistants, over MCP."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
