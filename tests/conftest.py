@@ -78,3 +78,11 @@ def mcp_client(make_server: Callable[[Handler], MCPServer]) -> Any:
             yield client
 
     return _connect
+
+
+@pytest.fixture(autouse=True)
+def _never_open_a_browser(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test may open the user's browser, whatever code path it reaches."""
+    import webbrowser
+
+    monkeypatch.setattr(webbrowser, "open", lambda *args, **kwargs: False)

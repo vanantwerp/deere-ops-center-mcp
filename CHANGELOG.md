@@ -6,7 +6,9 @@ First release. Everything below is new.
 
 - Runs on your own computer as an MCP server over stdio. Works with Claude Desktop, Claude Code and other MCP-capable apps.
 - Read-only. The sign-in asks John Deere only for read permissions, and no tool creates, edits or deletes anything in Operations Center.
-- Command line: `setup` (saves your Application ID and Secret, then signs in), `login`, `logout` and `config`.
+- Command line: `setup` (saves your Application ID and Secret, signs in, then offers to connect your AI apps), `connect`, `login`, `logout` and `config`.
+- `setup` writes the entry for this server into Claude Desktop's settings file itself, using the full location of `uvx`, so you do not look up that location or edit the file by hand. Other servers already listed in the file are kept, and a backup copy is saved before the file is changed. If Claude Code is installed, `setup` also offers to add the server there. The new `connect` command does only this step, without signing in, so you can run it again after reinstalling `uv`. If setup does not find Claude Desktop, the README's "Manual configuration" section has the steps to do it by hand.
+- `config` also shows where Claude Desktop's settings file is, whether it has the `deere` entry, and whether Claude Code was found.
 - Sign-in tokens renew themselves and are kept in a folder only your user account can read. `logout` removes them and tells John Deere to cancel them.
 - Organizations, with a flag for organizations that still need to be connected to your application.
 - Fields and field boundaries.

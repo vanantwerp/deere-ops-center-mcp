@@ -1,6 +1,6 @@
 # Deere Ops Center MCP
 
-> Draft. Written before the code exists, against the agreed design. Commands and paths below are what the finished tool will use. The repository lives at github.com/vanantwerp/deere-ops-center-mcp.
+> Version 0.1.0. The `setup` command configures Claude Desktop for you, so you do not edit any settings file by hand. The repository lives at github.com/vanantwerp/deere-ops-center-mcp.
 
 Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Operations Center data and answer questions about it. It runs on your own computer. It can only read. It cannot change anything in Operations Center.
 
@@ -21,7 +21,7 @@ This is a community project. It is not made, supported or endorsed by Deere & Co
 1. **A John Deere Operations Center account** with access to at least one organization.
 2. **A free John Deere developer application.** This gives you two codes that let the tool sign in to Operations Center on your behalf. Creating one takes about five minutes. Step 1 below explains how.
 3. **A computer** running Windows, macOS or Linux.
-4. **An AI app that supports MCP.** Claude Desktop and Claude Code both do. Other MCP-capable apps work too.
+4. **An AI app that supports MCP.** MCP is a standard way for AI apps to connect to outside tools. This project is one such tool, called an "MCP server": the AI app starts it on your computer and asks it questions. Claude Desktop is the Claude app you install on Windows or macOS. Claude Code is Claude's command-line tool: you use it by typing commands in a terminal, the plain text window described in the quick starts below. Both support MCP, and other MCP-capable apps work too.
 5. **A small free helper program called `uv`.** It downloads and runs the tool for you. Installing it is one command, shown in each quick start.
 
 ---
@@ -48,123 +48,106 @@ New applications start in John Deere's "sandbox" mode. Sandbox is real data from
 
 ## Step 2: Quick start on macOS
 
-1. **Install `uv`.** Open the Terminal app and paste:
+1. **Install `uv`.** Open the Terminal app: press Command+Space, type `Terminal` and press Return. Terminal is a window where you type or paste commands. Paste this line into it and press Return:
 
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-   Close Terminal and open it again so it knows about the new program. (If you already use Homebrew, `brew install uv` works too.)
+   Close Terminal and open it again so it knows about the new program. (Homebrew is a program installer that some Mac users already have. If you use it, `brew install uv` works too.)
 
-2. **Run the setup.** Paste this into Terminal:
-
-   ```bash
-   uvx --from git+https://github.com/vanantwerp/deere-ops-center-mcp deere-mcp setup
-   ```
-
-   It asks for your Application ID and Secret, saves them on your computer, and opens your web browser so you can sign in to John Deere. The first time, John Deere also asks which of your organizations the application may see. Choose them and confirm. When Terminal says `Signed in`, you are done with this step.
-
-3. **Find where `uvx` lives.** Claude Desktop needs the full location. In Terminal:
+2. **Run the setup.** Paste this into Terminal and press Return:
 
    ```bash
-   which uvx
+   uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp setup
    ```
 
-   It prints something like `/Users/yourname/.local/bin/uvx`. Copy that.
+   `uvx` is the part of `uv` that downloads a tool and runs it. The first time, it can take a little while to download the tool. Then setup does these things, in this order:
 
-4. **Connect Claude Desktop.** Open Claude Desktop, go to **Settings → Developer → Edit Config**. A file called `claude_desktop_config.json` opens. Make it look like this, using the location from the previous step:
+   - It asks for your Application ID and then your Secret, the two codes from Step 1. Paste each one and press Return. The Secret does not show on the screen as you paste it; that is normal. Setup saves both on your computer.
+   - It opens your web browser so you can sign in to John Deere. The first time, John Deere also asks which of your organizations the application may see. Choose them and confirm.
+   - It asks `Add the server to Claude Desktop? [Y/n]`. "The server" is this tool, the small program that Claude Desktop starts to talk to John Deere. In `[Y/n]` the capital letter is the default answer, so pressing Return on its own means yes. Press Return.
+   - If Claude Code is installed on your computer, it also asks `Also add it to Claude Code? [Y/n]`. Press Return for yes, or type `n` and press Return if you do not use Claude Code.
 
-   ```json
-   {
-     "mcpServers": {
-       "deere": {
-         "command": "/Users/yourname/.local/bin/uvx",
-         "args": ["--from", "git+https://github.com/vanantwerp/deere-ops-center-mcp", "deere-mcp"]
-       }
-     }
-   }
-   ```
+   When Terminal prints `Signed in. Quit and reopen Claude Desktop to finish.`, you are done with this step. Setup has written the entry that Claude Desktop needs, so there is no file for you to edit. If Claude Desktop already had other servers listed, they are kept, and setup saves a backup copy of the file first.
 
-   Save the file and quit and reopen Claude Desktop.
+   If Terminal prints only `Signed in.`, setup did not find Claude Desktop. Make sure Claude Desktop is installed, then follow [Manual configuration](#manual-configuration) near the end of this page, which takes the place of step 3. After that, continue with step 4.
 
-5. **Try it.** Ask Claude: "List my John Deere organizations."
+3. **Quit and reopen Claude Desktop.** Closing the window is not enough, because the app keeps running. In the menu bar at the top of the screen, choose **Claude**, then **Quit Claude** (or press Command+Q). Then open Claude Desktop again.
+
+4. **Try it.** Ask Claude: "List my John Deere organizations."
 
 ---
 
 ## Step 2: Quick start on Windows
 
-1. **Install `uv`.** Open PowerShell (search for it in the Start menu) and paste:
+1. **Install `uv`.** Open PowerShell: click the Start button, type `PowerShell`, and choose **Windows PowerShell** from the results. PowerShell is a window where you type or paste commands. Paste the line below into it and press Enter. (To paste, press Ctrl+V or right-click inside the window.)
 
    ```powershell
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 
-   Close PowerShell and open it again. (If you prefer, `winget install --id=astral-sh.uv -e` does the same.)
+   Close PowerShell and open it again so it knows about the new program. (If you prefer, `winget install --id=astral-sh.uv -e` does the same. `winget` is the tool Windows has for installing programs from the command line.)
 
-2. **Run the setup.** Paste this into PowerShell:
-
-   ```powershell
-   uvx --from git+https://github.com/vanantwerp/deere-ops-center-mcp deere-mcp setup
-   ```
-
-   It asks for your Application ID and Secret, saves them on your computer, and opens your web browser so you can sign in to John Deere. The first time, John Deere also asks which of your organizations the application may see. Choose them and confirm. When PowerShell says `Signed in`, you are done with this step.
-
-3. **Find where `uvx` lives.** Claude Desktop needs the full location. In PowerShell:
+2. **Run the setup.** Paste this into PowerShell and press Enter:
 
    ```powershell
-   where.exe uvx
+   uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp setup
    ```
 
-   It prints something like `C:\Users\yourname\.local\bin\uvx.exe`. Copy that.
+   `uvx` is the part of `uv` that downloads a tool and runs it. The first time, it can take a little while to download the tool. Then setup does these things, in this order:
 
-4. **Connect Claude Desktop.** Open Claude Desktop, go to **Settings → Developer → Edit Config**. A file called `claude_desktop_config.json` opens. Make it look like this, using the location from the previous step. In this file every backslash in a path is written twice:
+   - It asks for your Application ID and then your Secret, the two codes from Step 1. Paste each one and press Enter. The Secret does not show on the screen as you paste it; that is normal. Setup saves both on your computer.
+   - It opens your web browser so you can sign in to John Deere. The first time, John Deere also asks which of your organizations the application may see. Choose them and confirm.
+   - It asks `Add the server to Claude Desktop? [Y/n]`. "The server" is this tool, the small program that Claude Desktop starts to talk to John Deere. In `[Y/n]` the capital letter is the default answer, so pressing Enter on its own means yes. Press Enter.
+   - If Claude Code is installed on your computer, it also asks `Also add it to Claude Code? [Y/n]`. Press Enter for yes, or type `n` and press Enter if you do not use Claude Code.
 
-   ```json
-   {
-     "mcpServers": {
-       "deere": {
-         "command": "C:\\Users\\yourname\\.local\\bin\\uvx.exe",
-         "args": ["--from", "git+https://github.com/vanantwerp/deere-ops-center-mcp", "deere-mcp"],
-         "env": { "PYTHONUTF8": "1" }
-       }
-     }
-   }
-   ```
+   When PowerShell prints `Signed in. Quit and reopen Claude Desktop to finish.`, you are done with this step. Setup has written the entry that Claude Desktop needs, so there is no file for you to edit. If Claude Desktop already had other servers listed, they are kept, and setup saves a backup copy of the file first.
 
-   Save the file and quit and reopen Claude Desktop.
+   If PowerShell prints only `Signed in.`, setup did not find Claude Desktop. Make sure Claude Desktop is installed, then follow [Manual configuration](#manual-configuration) near the end of this page, which takes the place of step 3. After that, continue with step 4.
 
-5. **Try it.** Ask Claude: "List my John Deere organizations."
+3. **Quit and reopen Claude Desktop.** Closing the window is not enough, because the app can keep running in the background. Look for the Claude icon at the right end of the taskbar, near the clock. If you do not see it, click the small up arrow there to show hidden icons. Right-click the Claude icon and choose **Quit**. If there is no Claude icon, closing the window has already quit the app. Then open Claude Desktop again from the Start menu.
+
+4. **Try it.** Ask Claude: "List my John Deere organizations."
 
 ---
 
 ## Step 2: Quick start on Linux
 
-1. **Install `uv`.** In a terminal:
+1. **Install `uv`.** Open a terminal (look for **Terminal** in your applications menu). A terminal is a window where you type or paste commands. Paste this line into it and press Enter:
 
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-   Open a new terminal afterwards.
+   Open a new terminal afterwards so it knows about the new program.
 
-2. **Run the setup.**
+2. **Run the setup.** Paste this into the terminal and press Enter:
 
    ```bash
-   uvx --from git+https://github.com/vanantwerp/deere-ops-center-mcp deere-mcp setup
+   uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp setup
    ```
 
-   Follow the prompts and sign in to John Deere in the browser that opens. If no browser opens, copy the link the terminal prints into one.
+   `uvx` is the part of `uv` that downloads a tool and runs it. The first time, it can take a little while to download the tool. Then setup does these things, in this order:
 
-3. **Connect your AI app.** Claude Desktop is not available on Linux. Use Claude Code (next section) or any other MCP-capable app, giving it the command `uvx` with the arguments `--from git+https://github.com/vanantwerp/deere-ops-center-mcp deere-mcp`.
+   - It asks for your Application ID and then your Secret, the two codes from Step 1. Paste each one and press Enter. The Secret does not show on the screen as you paste it; that is normal. Setup saves both on your computer.
+   - It opens your web browser so you can sign in to John Deere. The first time, John Deere also asks which of your organizations the application may see. Choose them and confirm. If no browser opens, copy the link the terminal prints into one.
+   - If Claude Code is installed on your computer, it asks `Also add it to Claude Code? [Y/n]`. In `[Y/n]` the capital letter is the default answer, so pressing Enter on its own means yes. Press Enter for yes, or type `n` and press Enter if you do not want it added.
+
+   When the terminal prints `Signed in.`, you are done with this step.
+
+3. **Connect your AI app.** Claude Desktop is not available on Linux. If you use Claude Code and answered yes in step 2, it is already connected. If you skipped it, use the command in the next section. For any other MCP-capable app, give it the command `uvx` with the arguments `--from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp`.
 
 ---
 
 ## Using it with Claude Code (any platform)
 
-After Step 1 and the `setup` command for your platform, run this once in a terminal:
+After Step 1 and the `setup` command for your platform, `setup` offers to add the server to Claude Code when it finds Claude Code on your computer. This is the `Also add it to Claude Code? [Y/n]` question. If you answered yes, there is nothing more to do here. If setup could not add it, it prints the command to run by hand.
+
+If you skipped the question, or installed Claude Code later, run this once in a terminal:
 
 ```bash
-claude mcp add deere -- uvx --from git+https://github.com/vanantwerp/deere-ops-center-mcp deere-mcp
+claude mcp add --scope user deere -- uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp
 ```
 
 Then start Claude Code and ask: "List my John Deere organizations."
@@ -178,20 +161,28 @@ Then start Claude Code and ask: "List my John Deere organizations."
 **Signing in again.** Your sign-in normally renews itself. If the assistant reports that the session expired, run the setup command for your platform again, or just:
 
 ```bash
-uvx --from git+https://github.com/vanantwerp/deere-ops-center-mcp deere-mcp login
+uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp login
 ```
 
 **Signing out.** This removes the saved sign-in from your computer and tells John Deere to cancel it:
 
 ```bash
-uvx --from git+https://github.com/vanantwerp/deere-ops-center-mcp deere-mcp logout
+uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp logout
 ```
 
 **Updating to the newest version.** Add `--refresh` once:
 
 ```bash
-uvx --refresh --from git+https://github.com/vanantwerp/deere-ops-center-mcp deere-mcp login
+uvx --refresh --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp login
 ```
+
+**If you move or reinstall things.** `setup` writes the full location (also called the path) of the `uvx` program into the Claude Desktop settings file. If you reinstall `uv` or move it, or you use a local copy of this project (for developers) and move its folder, that location goes out of date and Claude Desktop says the server could not start. Run this to write the entry again. It does not ask you to sign in again:
+
+```bash
+uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp connect
+```
+
+It asks the same yes or no questions as `setup`, then prints one line for each app saying what it did: created or updated the entry (with the name of the backup copy it saved first), found it already correct, or skipped the app because it was not found. If `setup` or `connect` ever prints a message ending in `Run "deere-mcp connect" to try again.`, your sign-in worked but the settings file was not changed. Fix what the message describes, then run the command above.
 
 **Where your sign-in is kept.** In a folder only your user account can read:
 
@@ -201,10 +192,10 @@ uvx --refresh --from git+https://github.com/vanantwerp/deere-ops-center-mcp deer
 | Windows | `%LOCALAPPDATA%\deere-mcp` (usually `C:\Users\yourname\AppData\Local\deere-mcp`) |
 | Linux | `~/.config/deere-mcp` |
 
-It holds your Application ID, Secret and sign-in tokens. Do not copy it to other machines or share it. To see the exact folders on your computer, run:
+It holds your Application ID, Secret and sign-in tokens. Do not copy it to other machines or share it. To see the exact folders on your computer, where your Claude Desktop settings file is and whether it has the `deere` entry, and whether Claude Code was found, run:
 
 ```bash
-uvx --from git+https://github.com/vanantwerp/deere-ops-center-mcp deere-mcp config
+uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp config
 ```
 
 ---
@@ -247,19 +238,82 @@ Everything works without touching these. Set them as environment variables, or a
 
 ## Troubleshooting
 
-**"redirect_uri mismatch" or "invalid redirect" during sign-in.** The Redirect URI in your John Deere application is not exactly `http://localhost:9090/callback`. Fix it there and run `login` again.
+**"redirect_uri mismatch" or "invalid redirect" during sign-in.** The Redirect URI in your John Deere application is not exactly `http://localhost:9090/callback`. Fix it there and run the sign-in command from Everyday use again.
 
-**The organization list is empty, or you get "403 Forbidden".** The application has not been connected to your organization yet. Run `login` again and complete the organization-selection page John Deere shows, or visit connections.deere.com and connect it there.
+**The organization list is empty, or you get "403 Forbidden".** The application has not been connected to your organization yet. Run the sign-in command from Everyday use again and complete the organization-selection page John Deere shows, or visit connections.deere.com and connect it there.
 
-**Claude Desktop says the server could not start.** Almost always the `command` path. Run `which uvx` (macOS) or `where.exe uvx` (Windows) and use the exact result. On Windows, also confirm the `"env": { "PYTHONUTF8": "1" }` line is present. Claude Desktop's own logs are under `~/Library/Logs/Claude` on macOS and `%APPDATA%\Claude\logs` on Windows.
+**Claude Desktop says the server could not start.** Run `connect` (the full command is under "If you move or reinstall things" in Everyday use), which writes the full path for you. Claude Desktop's own logs are under `~/Library/Logs/Claude` on macOS and `%APPDATA%\Claude\logs` on Windows.
 
 **No browser opened during sign-in.** Copy the link printed in the terminal into any browser.
 
-**"Session expired."** Run `login` again.
+**"Session expired."** Run the sign-in command from Everyday use again.
 
 **A question returned "list was cut short".** The result had more than the page cap allows. Narrow the question (a single season, a shorter date range) or raise `DEERE_PAGE_CAP`.
 
 **Machine alerts or locations fail with a date error.** John Deere limits alerts to 7 days per request and location history to 1 month per request. Ask for a shorter window.
+
+---
+
+## Manual configuration
+
+You only need this if `setup` could not find Claude Desktop, which you can tell because it never asked `Add the server to Claude Desktop? [Y/n]` and ended with just `Signed in.`
+
+These steps do by hand what `setup` normally does for you: they tell Claude Desktop how to start this tool, by adding an entry to its settings file, `claude_desktop_config.json`. The file is written in a format called JSON, where every quote, comma and bracket matters, so copy the example exactly and change only the location you find in step 1.
+
+### On macOS
+
+1. **Find where `uvx` lives.** Claude Desktop does not look in the same places for programs that Terminal does, so it needs the full location. In Terminal:
+
+   ```bash
+   which uvx
+   ```
+
+   It prints something like `/Users/yourname/.local/bin/uvx`. Copy that.
+
+2. **Edit the settings file.** Open Claude Desktop, go to **Settings → Developer → Edit Config**. The file `claude_desktop_config.json` opens. Make it look like this, using the location from the previous step:
+
+   ```json
+   {
+     "mcpServers": {
+       "deere": {
+         "command": "/Users/yourname/.local/bin/uvx",
+         "args": ["--from", "https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip", "deere-mcp"]
+       }
+     }
+   }
+   ```
+
+   If the file already has an `mcpServers` section, add only the `"deere"` entry inside it, with a comma between entries, and keep what is already there. Save the file.
+
+3. **Quit and reopen Claude Desktop.** Follow step 3 of the macOS quick start. Then continue with step 4 there.
+
+### On Windows
+
+1. **Find where `uvx` lives.** Claude Desktop does not look in the same places for programs that PowerShell does, so it needs the full location. In PowerShell:
+
+   ```powershell
+   where.exe uvx
+   ```
+
+   It prints something like `C:\Users\yourname\.local\bin\uvx.exe`. Copy that.
+
+2. **Edit the settings file.** Open Claude Desktop, go to **Settings → Developer → Edit Config**. The file `claude_desktop_config.json` opens. Make it look like this, using the location from the previous step. In this file every backslash in a path is written twice:
+
+   ```json
+   {
+     "mcpServers": {
+       "deere": {
+         "command": "C:\\Users\\yourname\\.local\\bin\\uvx.exe",
+         "args": ["--from", "https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip", "deere-mcp"],
+         "env": { "PYTHONUTF8": "1" }
+       }
+     }
+   }
+   ```
+
+   Leave the `"env"` line in. It makes the tool use UTF-8, the standard way of storing text, including accented characters, for what it sends back to Claude Desktop. If the file already has an `mcpServers` section, add only the `"deere"` entry inside it, with a comma between entries, and keep what is already there. Save the file.
+
+3. **Quit and reopen Claude Desktop.** Follow step 3 of the Windows quick start. Then continue with step 4 there.
 
 ---
 

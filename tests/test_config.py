@@ -141,7 +141,7 @@ def test_cli_setup_saves_credentials_and_runs_login(
         return 0
 
     monkeypatch.setattr(cli, "_login", fake_login)
-    assert cli.main(["setup"]) == 0
+    assert cli.main(["setup", "--no-connect"]) == 0
     saved = read_config(config_home / "config.toml")
     assert saved == {"uom": "ENGLISH", "client_id": "my-app-id", "client_secret": "my-secret"}
     assert logged_in[0].client_id == "my-app-id"
