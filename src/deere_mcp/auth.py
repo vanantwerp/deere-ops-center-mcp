@@ -627,6 +627,24 @@ def _connection_summary(organizations: list[dict[str, Any]]) -> str:
     return " ".join(parts) or "You are not a member of any organization that can be connected."
 
 
+SIGNED_IN = "Signed in."
+
+
+@dataclass(frozen=True)
+class LoginResult:
+    """What `login` leaves behind: the saved tokens and the line the CLI prints last."""
+
+    tokens: Tokens
+    summary: str  # SIGNED_IN when every organization is connected, else a one-line warning
+
+
+def _not_connected(missing: list[str], what_to_do: str) -> str:
+    return (
+        f"Signed in, but not connected: {', '.join(missing)}. {what_to_do}, then run "
+        "`deere-mcp login` again."
+    )
+
+
 async def _read_organizations_quietly(
     http: httpx.AsyncClient, settings: Settings, tokens: Tokens
 ) -> list[dict[str, Any]] | None:
@@ -644,13 +662,15 @@ async def login(
     open_browser: bool = True,
     http: httpx.AsyncClient | None = None,
     echo: Echo | None = None,
-) -> Tokens:
+) -> LoginResult:
     """Run the browser sign-in, save the tokens, and handle the organization-connection step.
 
     `echo` receives the lines meant for the person at the terminal (the CLI passes `print`);
-    by default they go to stderr so nothing is ever written to stdout from here.
+    by default they go to stderr so nothing is ever written to stdout from here. The result's
+    `summary` is the closing line: "Signed in." only when nothing is left to connect.
     """
     say = echo or _stderr_echo
+    summary = SIGNED_IN
     client_id, _ = _credentials(settings)
     own_http = http is None
     http = http or httpx.AsyncClient(timeout=30.0)
@@ -684,6 +704,11 @@ async def login(
                 )
                 organizations = []
                 connections = None
+                summary = (
+                    "Signed in, but could not check organization access. If the tools answer "
+                    "403, connect this application to your organization at "
+                    f"https://{CONNECTIONS_HOST}, then run `deere-mcp login` again."
+                )
             if organizations and not connections:
                 say(f"Signed in to John Deere. {_connection_summary(organizations)}")
             if connections:
@@ -692,6 +717,10 @@ async def login(
                     say(
                         "John Deere asks you to choose which organizations this application may "
                         f"see. Visit https://{CONNECTIONS_HOST} to do that."
+                    )
+                    summary = _not_connected(
+                        _split_member_organizations(organizations)[1],
+                        f"Visit https://{CONNECTIONS_HOST} to connect",
                     )
                 else:
                     link = with_redirect(connections, redirect_uri)
@@ -730,18 +759,27 @@ async def login(
                             "Could not renew the sign-in after the organization step. You are "
                             "signed in. If the tools answer 403, run `deere-mcp login` again."
                         )
+                        summary = (
+                            "Signed in, but could not renew the sign-in after the organization "
+                            "step. If the tools answer 403, run `deere-mcp login` again."
+                        )
                     now = await _read_organizations_quietly(http, settings, tokens)
                     if now is None:
                         say("Could not check which organizations are connected.")
-                    elif _split_member_organizations(now)[1]:
+                        summary = (
+                            "Signed in, but could not check which organizations are connected. "
+                            "If the tools answer 403, run `deere-mcp login` again."
+                        )
+                    elif missing := _split_member_organizations(now)[1]:
                         say(
                             f"{_connection_summary(now)} The connections page was probably signed "
                             "in as a different John Deere user. Sign out at "
                             f"https://{CONNECTIONS_HOST}, then run `deere-mcp login` again."
                         )
+                        summary = _not_connected(missing, f"Sign out at https://{CONNECTIONS_HOST}")
                     else:
                         say(f"Organization access saved. {_connection_summary(now)}")
-            return tokens
+            return LoginResult(tokens, summary)
     finally:
         if own_http:
             await http.aclose()

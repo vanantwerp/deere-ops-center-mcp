@@ -137,8 +137,7 @@ def test_cli_setup_saves_credentials_and_runs_login(
 
     def fake_login(settings):
         logged_in.append(settings)
-        print("Signed in.")
-        return 0
+        return "Signed in."
 
     monkeypatch.setattr(cli, "_login", fake_login)
     assert cli.main(["setup", "--no-connect"]) == 0

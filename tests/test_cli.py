@@ -16,7 +16,7 @@ from typing import Any
 import pytest
 
 from deere_mcp import auth, cli, clients, paths
-from deere_mcp.auth import AuthError, Tokens, TokenStore
+from deere_mcp.auth import SIGNED_IN, AuthError, LoginResult, Tokens, TokenStore
 from deere_mcp.config import ENV_NAMES, write_config
 
 
@@ -75,7 +75,7 @@ def machine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeMachine:
 
     real_login = auth.login
 
-    async def no_real_login(settings: Any, store: Any, **kwargs: Any) -> Tokens:
+    async def no_real_login(settings: Any, store: Any, **kwargs: Any) -> LoginResult:
         if not (settings.client_id and settings.client_secret):
             # The real one refuses before any network or browser use; keep that behaviour.
             return await real_login(settings, store, **kwargs)
@@ -130,12 +130,36 @@ def test_login_command_prints_signed_in(
 ) -> None:
     write_config(home / "config.toml", {"client_id": "id", "client_secret": "secret"})
 
-    async def fake_login(settings: Any, store: Any, **kwargs: Any) -> Tokens:
-        return Tokens(access_token="a", refresh_token="r", expires_at=1.0)
+    async def fake_login(settings: Any, store: Any, **kwargs: Any) -> LoginResult:
+        return LoginResult(Tokens(access_token="a", refresh_token="r", expires_at=1.0), SIGNED_IN)
 
     monkeypatch.setattr(auth, "login", fake_login)
     assert cli.main(["login"]) == 0
     assert capsys.readouterr().out.strip() == "Signed in."
+
+
+NOT_CONNECTED = (
+    "Signed in, but not connected: Barn. Sign out at https://connections.deere.com, then run "
+    "`deere-mcp login` again."
+)
+
+
+def test_login_command_ends_with_the_warning_when_an_organization_is_not_connected(
+    home: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_config(home / "config.toml", {"client_id": "id", "client_secret": "secret"})
+
+    async def fake_login(settings: Any, store: Any, **kwargs: Any) -> LoginResult:
+        kwargs["echo"]("Connected: Home. Not connected: Barn.")
+        return LoginResult(
+            Tokens(access_token="a", refresh_token="r", expires_at=1.0), NOT_CONNECTED
+        )
+
+    monkeypatch.setattr(auth, "login", fake_login)
+    assert cli.main(["login"]) == 0
+    out = capsys.readouterr().out
+    assert last_line(out) == NOT_CONNECTED
+    assert "Signed in." not in out.splitlines()
 
 
 def test_login_without_credentials_fails_plainly(
@@ -167,10 +191,10 @@ def test_setup_merges_existing_config_and_signs_in(
     monkeypatch.setattr(getpass, "getpass", lambda prompt="": "")  # Enter keeps the saved secret
     seen: dict[str, Any] = {}
 
-    async def fake_login(settings: Any, store: Any, **kwargs: Any) -> Tokens:
+    async def fake_login(settings: Any, store: Any, **kwargs: Any) -> LoginResult:
         seen["client_id"] = settings.client_id
         seen["client_secret"] = settings.client_secret
-        return Tokens(access_token="a", refresh_token="r", expires_at=1.0)
+        return LoginResult(Tokens(access_token="a", refresh_token="r", expires_at=1.0), SIGNED_IN)
 
     monkeypatch.setattr(auth, "login", fake_login)
 
@@ -214,8 +238,8 @@ def fake_login(home: Path, monkeypatch: pytest.MonkeyPatch) -> list[str]:
     write_config(home / "config.toml", {"client_id": "id", "client_secret": "secret"})
     monkeypatch.setattr(getpass, "getpass", lambda prompt="": "")
 
-    async def login(settings: Any, store: Any, **kwargs: Any) -> Tokens:
-        return Tokens(access_token="a", refresh_token="r", expires_at=1.0)
+    async def login(settings: Any, store: Any, **kwargs: Any) -> LoginResult:
+        return LoginResult(Tokens(access_token="a", refresh_token="r", expires_at=1.0), SIGNED_IN)
 
     monkeypatch.setattr(auth, "login", login)
     return answer(monkeypatch, [])
@@ -503,6 +527,28 @@ def test_setup_yes_does_not_ask(
     )
 
 
+def test_setup_ends_with_the_warning_and_the_desktop_step(
+    home: Path,
+    machine: FakeMachine,
+    fake_login: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config = machine.install_claude_desktop()
+
+    async def login(settings: Any, store: Any, **kwargs: Any) -> LoginResult:
+        return LoginResult(
+            Tokens(access_token="a", refresh_token="r", expires_at=1.0), NOT_CONNECTED
+        )
+
+    monkeypatch.setattr(auth, "login", login)
+    assert cli.main(["setup", "--yes"]) == 0
+    assert config.exists()
+    out = capsys.readouterr().out
+    assert last_line(out) == f"{NOT_CONNECTED} Quit and reopen Claude Desktop to finish."
+    assert "Signed in." not in out.splitlines()
+
+
 def test_setup_no_connect_skips_the_apps(
     home: Path,
     machine: FakeMachine,
@@ -563,7 +609,7 @@ def test_setup_failed_login_exits_one_and_leaves_apps_alone(
 ) -> None:
     config = machine.install_claude_desktop()
 
-    async def failing_login(settings: Any, store: Any, **kwargs: Any) -> Tokens:
+    async def failing_login(settings: Any, store: Any, **kwargs: Any) -> LoginResult:
         raise AuthError("Sign-in timed out.")
 
     monkeypatch.setattr(auth, "login", failing_login)

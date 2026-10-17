@@ -85,12 +85,12 @@ def _serve() -> int:
     return 0
 
 
-def _login(settings: Settings) -> int:
-    """Sign in through the browser. The caller prints the closing line."""
+def _login(settings: Settings) -> str:
+    """Sign in through the browser; returns the closing line for the caller to print."""
     from deere_mcp import auth
 
-    asyncio.run(auth.login(settings, TokenStore(settings.token_path), echo=print))
-    return 0
+    result = asyncio.run(auth.login(settings, TokenStore(settings.token_path), echo=print))
+    return result.summary
 
 
 def _logout() -> int:
@@ -135,13 +135,14 @@ def _setup(args: argparse.Namespace) -> int:
                 f"Note: {ENV_NAMES[key]} is set in the environment and overrides the saved value."
             )
     print()
-    _login(load_settings(config_path=config_path))  # a failed sign-in raises: exit code 1
+    # A failed sign-in raises, so setup ends with exit code 1 before touching the AI apps.
+    summary = _login(load_settings(config_path=config_path))
 
     desktop_ready = False
     if not args.no_connect:
         print()
         desktop_ready = _connect_clients(args).desktop_ready
-    print("Signed in. Quit and reopen Claude Desktop to finish." if desktop_ready else "Signed in.")
+    print(f"{summary} Quit and reopen Claude Desktop to finish." if desktop_ready else summary)
     return 0
 
 
@@ -325,8 +326,7 @@ def main(argv: list[str] | None = None) -> int:
         if command == "connect":
             return _connect(args)
         if command == "login":
-            _login(load_settings())
-            print("Signed in.")
+            print(_login(load_settings()))
             return 0
         if command == "logout":
             return _logout()
