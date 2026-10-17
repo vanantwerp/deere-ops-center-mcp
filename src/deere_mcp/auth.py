@@ -695,7 +695,6 @@ async def login(
                 connections = find_connections_link(organizations)
             except (AuthError, httpx.HTTPError, ValueError) as exc:
                 reason = str(exc) if isinstance(exc, AuthError) else type(exc).__name__
-                logger.warning("Could not check organization access: %s", reason)
                 say(
                     f"Could not check organization access: {reason} You are signed in. "
                     "If the tools answer 403, connect this application to your organization "
@@ -753,7 +752,6 @@ async def login(
                     try:
                         tokens = await refresh_tokens(http, settings, store, tokens)
                     except (AuthError, httpx.HTTPError):
-                        logger.warning("Could not renew the sign-in after the organization step.")
                         say(
                             "Could not renew the sign-in after the organization step. You are "
                             "signed in. If the tools answer 403, run `deere-mcp login` again."

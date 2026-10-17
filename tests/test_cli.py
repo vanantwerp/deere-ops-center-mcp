@@ -486,6 +486,29 @@ def test_three_unclear_answers_mean_no(
     assert capsys.readouterr().out.count("Please answer y or n.") == 3
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="uses a POSIX pseudo-terminal")
+def test_enter_pressed_before_the_question_does_not_answer_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import os
+    import pty
+    import select
+
+    controller, terminal = pty.openpty()
+    try:
+        with os.fdopen(terminal, "r", closefd=False) as stdin:
+            monkeypatch.setattr(sys, "stdin", stdin)
+            os.write(controller, b"\n")  # Enter while the browser sign-in was running
+            assert select.select([terminal], [], [], 1)[0]
+
+            cli._discard_typeahead()
+
+            assert not select.select([terminal], [], [], 0.1)[0]
+    finally:
+        os.close(controller)
+        os.close(terminal)
+
+
 def test_setup_only_asks_about_apps_that_are_installed(
     home: Path,
     machine: FakeMachine,

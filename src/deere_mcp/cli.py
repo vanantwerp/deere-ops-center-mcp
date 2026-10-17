@@ -166,8 +166,31 @@ def _terminal_attached() -> bool:
         return False
 
 
+def _discard_typeahead() -> None:
+    """Drop keys pressed before the question, such as Enter while waiting for the browser.
+
+    Otherwise a stray Enter answers the next [Y/n] question with yes before it is read.
+    """
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+
+            while msvcrt.kbhit():
+                msvcrt.getwch()
+        else:
+            import termios
+
+            try:
+                termios.tcflush(sys.stdin, termios.TCIFLUSH)
+            except termios.error:
+                pass
+    except (ImportError, OSError, ValueError, AttributeError):  # not a real console
+        pass
+
+
 def _ask(question: str) -> bool:
     """Ask a [Y/n] question. Empty means yes; no input, or three unclear answers, means no."""
+    _discard_typeahead()
     for _ in range(3):
         try:
             answer = input(question).strip().lower()
