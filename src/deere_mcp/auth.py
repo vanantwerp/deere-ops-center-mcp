@@ -602,6 +602,10 @@ def _organization_names(organizations: list[dict[str, Any]]) -> list[str]:
     return [str(org.get("name") or "").strip() or "an organization" for org in organizations]
 
 
+def _member_organizations(organizations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [org for org in organizations if org.get("member") is True]
+
+
 def _split_member_organizations(
     organizations: list[dict[str, Any]],
 ) -> tuple[list[str], list[str]]:
@@ -691,6 +695,12 @@ async def login(
                     )
                 else:
                     link = with_redirect(connections, redirect_uri)
+                    members = ", ".join(_organization_names(_member_organizations(organizations)))
+                    say(
+                        f"You are signed in as a member of: {members}. If the page that opens "
+                        "shows other organizations, it is signed in as someone else: sign out "
+                        "there, then run `deere-mcp login` again."
+                    )
                     say(
                         "John Deere asks you to choose which organizations this application may "
                         "see. Choose them in the browser and confirm. If no browser opens, visit:"

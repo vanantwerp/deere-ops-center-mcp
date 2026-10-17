@@ -518,6 +518,7 @@ async def test_login_skips_the_chooser_for_an_organization_the_user_cannot_conne
     assert not any(line.startswith("https://connections") for line in lines)
     assert any("Connected: Home." in line for line in lines)
     assert not any("Neighbor" in line for line in lines)
+    assert not any(line.startswith("You are signed in as a member of") for line in lines)
     assert [r.url.path for r in routes.requests].count("/platform/organizations") == 1
 
 
@@ -542,6 +543,29 @@ async def test_login_reports_connected_organizations_after_the_chooser(
         "Bearer tok-acc-1",
         "Bearer tok-acc-2",  # the second read uses the renewed sign-in
     ]
+
+
+@pytest.mark.anyio
+async def test_login_names_the_members_organizations_before_the_chooser_opens(
+    settings: Settings,
+) -> None:
+    settings = replace(settings, callback_port=_free_port())
+    before = [
+        _org("Home", member=True, connected=True),
+        _org("Neighbor", member=False, connected=False),
+        _org("Barn", member=True, connected=False),
+    ]
+    after = [_org("Home", member=True, connected=True), _org("Barn", member=True, connected=True)]
+    routes = _login_routes(before, after)
+    lines: list[str] = []
+    await _login_to_the_chooser_step(settings, routes, lines, come_back=True)
+
+    who = next(line for line in lines if line.startswith("You are signed in as a member of:"))
+    assert who.startswith("You are signed in as a member of: Home, Barn.")
+    assert "Neighbor" not in who
+    assert "signed in as someone else" in who and "deere-mcp login" in who
+    link = next(line for line in lines if line.startswith("https://connections.deere.com"))
+    assert lines.index(who) < lines.index(link)
 
 
 @pytest.mark.anyio
