@@ -630,6 +630,16 @@ async def login(
                             "Timed out waiting for the organization step. You are signed in; "
                             f"to finish, run `deere-mcp login` again or visit https://{CONNECTIONS_HOST}."
                         ) from None
+                    # Deere checks field access against the state a token was issued under, so
+                    # renew once now that the connection exists.
+                    try:
+                        tokens = await refresh_tokens(http, settings, store, tokens)
+                    except (AuthError, httpx.HTTPError):
+                        logger.warning("Could not renew the sign-in after the organization step.")
+                        say(
+                            "Could not renew the sign-in after the organization step. You are "
+                            "signed in. If the tools answer 403, run `deere-mcp login` again."
+                        )
             return tokens
     finally:
         if own_http:
