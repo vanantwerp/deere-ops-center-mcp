@@ -32,7 +32,8 @@ DEERE_ACCEPT = "application/vnd.deere.axiom.v3+json"
 CONNECTIONS_HOST = "connections.deere.com"
 CALLBACK_HOST = "127.0.0.1"
 CALLBACK_PATH = "/callback"
-LOGIN_TIMEOUT = 600.0  # seconds to wait for each browser step
+LOGIN_TIMEOUT = 600.0  # seconds to wait for the browser sign-in
+CHOOSER_TIMEOUT = 180.0  # seconds to wait for the organization page; closing it never reports back
 DEFAULT_EXPIRES_IN = 3600.0
 NOT_SET_UP = "Run `deere-mcp setup` first."
 
@@ -268,6 +269,7 @@ def authorization_url(endpoint: str, client_id: str, redirect_uri: str, state: s
             "redirect_uri": redirect_uri,
             "scope": SCOPES,
             "state": state,
+            "prompt": "login",  # always ask for credentials, so switching users works
         }
     )
     return f"{endpoint}{'&' if '?' in endpoint else '?'}{query}"
@@ -525,15 +527,16 @@ def _connections_link(record: Any) -> str | None:
     return None
 
 
-async def find_connections_link(
+async def list_organizations(
     http: httpx.AsyncClient, settings: Settings, tokens: Tokens
-) -> str | None:
-    """Return the first organization 'connections' link, following pages up to the page cap."""
+) -> list[dict[str, Any]]:
+    """Return the signed-in user's organizations, following pages up to the page cap."""
+    organizations: list[dict[str, Any]] = []
     url: str | None = f"{settings.base_url}/organizations"
     headers = {"Authorization": f"Bearer {tokens.access_token}", "Accept": DEERE_ACCEPT}
     for _ in range(settings.page_cap):
         if url is None or not is_allowed_host(urlsplit(url).hostname):
-            return None
+            break
         response = await http.get(url, headers=headers)
         if response.status_code == 403:
             if response.headers.get("response-code-details") == "ext_authz_denied":
@@ -552,16 +555,61 @@ async def find_connections_link(
             raise AuthError(f"John Deere answered {response.status_code} to the organization list.")
         data = response.json()
         if not isinstance(data, dict):
-            return None
-        for org in data.get("values") or []:
-            link = _connections_link(org)
-            if link:
-                return link
+            break
+        organizations.extend(org for org in data.get("values") or [] if isinstance(org, dict))
         url = None
         for item in data.get("links") or []:
             if isinstance(item, dict) and item.get("rel") == "nextPage":
                 url = item.get("uri") if isinstance(item.get("uri"), str) else None
+    return organizations
+
+
+def find_connections_link(organizations: list[dict[str, Any]]) -> str | None:
+    """Return the first 'connections' link of an organization the user is a member of.
+
+    Only members can connect an organization, so a link on any other organization is no use.
+    """
+    for org in organizations:
+        if org.get("member") is True:
+            link = _connections_link(org)
+            if link:
+                return link
     return None
+
+
+def _organization_names(organizations: list[dict[str, Any]]) -> list[str]:
+    return [str(org.get("name") or "").strip() or "an organization" for org in organizations]
+
+
+def _split_member_organizations(
+    organizations: list[dict[str, Any]],
+) -> tuple[list[str], list[str]]:
+    """Names of the member organizations that are connected, and of those that are not."""
+    members = [org for org in organizations if org.get("member") is True]
+    connected = _organization_names([org for org in members if not _connections_link(org)])
+    missing = _organization_names([org for org in members if _connections_link(org)])
+    return connected, missing
+
+
+def _connection_summary(organizations: list[dict[str, Any]]) -> str:
+    """One plain sentence on which of the user's organizations are connected."""
+    connected, missing = _split_member_organizations(organizations)
+    parts = []
+    if connected:
+        parts.append(f"Connected: {', '.join(connected)}.")
+    if missing:
+        parts.append(f"Not connected: {', '.join(missing)}.")
+    return " ".join(parts) or "You are not a member of any organization that can be connected."
+
+
+async def _read_organizations_quietly(
+    http: httpx.AsyncClient, settings: Settings, tokens: Tokens
+) -> list[dict[str, Any]] | None:
+    try:
+        return await list_organizations(http, settings, tokens)
+    except (AuthError, httpx.HTTPError, ValueError):
+        logger.warning("Could not re-read the organizations.")
+        return None
 
 
 async def login(
@@ -596,7 +644,8 @@ async def login(
             store.save(tokens)
 
             try:
-                connections = await find_connections_link(http, settings, tokens)
+                organizations = await list_organizations(http, settings, tokens)
+                connections = find_connections_link(organizations)
             except (AuthError, httpx.HTTPError, ValueError) as exc:
                 reason = str(exc) if isinstance(exc, AuthError) else type(exc).__name__
                 logger.warning("Could not check organization access: %s", reason)
@@ -605,7 +654,10 @@ async def login(
                     "If the tools answer 403, connect this application to your organization "
                     f"at https://{CONNECTIONS_HOST}, then run `deere-mcp login` again."
                 )
+                organizations = []
                 connections = None
+            if organizations and not connections:
+                say(f"Signed in to John Deere. {_connection_summary(organizations)}")
             if connections:
                 host = (urlsplit(connections).hostname or "").lower()
                 if urlsplit(connections).scheme != "https" or host != CONNECTIONS_HOST:
@@ -624,11 +676,15 @@ async def login(
                     if open_browser:
                         _open_browser(link)
                     try:
-                        await listener.wait_for_return(waiter, LOGIN_TIMEOUT)
+                        await listener.wait_for_return(waiter, CHOOSER_TIMEOUT)
                     except AuthError:
+                        now = await _read_organizations_quietly(http, settings, tokens)
+                        state_now = f" {_connection_summary(now)}" if now else ""
                         raise AuthError(
-                            "Timed out waiting for the organization step. You are signed in; "
-                            f"to finish, run `deere-mcp login` again or visit https://{CONNECTIONS_HOST}."
+                            "Timed out waiting for the organization step. Your sign-in is saved."
+                            f"{state_now} If an organization is missing, run `deere-mcp login` "
+                            f"again or connect it at https://{CONNECTIONS_HOST}. If that page "
+                            "shows someone else's organizations, sign out there first."
                         ) from None
                     # Deere checks field access against the state a token was issued under, so
                     # renew once now that the connection exists.
@@ -640,6 +696,17 @@ async def login(
                             "Could not renew the sign-in after the organization step. You are "
                             "signed in. If the tools answer 403, run `deere-mcp login` again."
                         )
+                    now = await _read_organizations_quietly(http, settings, tokens)
+                    if now is None:
+                        say("Could not check which organizations are connected.")
+                    elif _split_member_organizations(now)[1]:
+                        say(
+                            f"{_connection_summary(now)} The connections page was probably signed "
+                            "in as a different John Deere user. Sign out at "
+                            f"https://{CONNECTIONS_HOST}, then run `deere-mcp login` again."
+                        )
+                    else:
+                        say(f"Organization access saved. {_connection_summary(now)}")
             return tokens
     finally:
         if own_http:

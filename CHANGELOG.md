@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `login` now suits switching John Deere accounts: John Deere asks for your password every time, the organization page opens only for organizations you can connect, it lists which organizations are connected when it finishes (and says to sign out at connections.deere.com if one is not), and it stops waiting after three minutes if you close that page.
 - A running server now notices a new sign-in. After `logout` and `login` in a terminal, the next request uses the new sign-in, so Claude Desktop no longer needs a restart to switch John Deere users.
 - `login` renews the sign-in once more after you connect the application to an organization. Before, the sign-in issued moments earlier did not see the new connection, and fields and boundaries answered "403 Forbidden" until the next `login`.
 

@@ -179,11 +179,13 @@ Without a Terminal panel, follow the quick start for your platform.
 
 ## Everyday use
 
-**Signing in again.** The sign-in renews itself. If the assistant says the session expired:
+**Signing in again.** The sign-in renews itself. If the assistant says the session expired, or you want to switch to a different John Deere account:
 
 ```bash
 uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp login
 ```
+
+John Deere asks for your user name and password every time, so you can sign in as someone else. If the terminal then says an organization is "Not connected" and that the connections page was probably signed in as a different user, open [connections.deere.com](https://connections.deere.com), sign out there, and run the command again. The command lists which of your organizations are connected when it finishes.
 
 **Signing out.** Removes the saved sign-in from your computer and cancels it at John Deere:
 

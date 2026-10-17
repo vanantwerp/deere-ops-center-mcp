@@ -9,6 +9,7 @@ import socket
 import stat
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -283,10 +284,11 @@ async def test_login_flow_with_organization_connection(settings: Settings) -> No
         json_response(
             deere_list(
                 [
-                    {"id": "1", "name": "Home", "links": []},
+                    {"id": "1", "name": "Home", "member": True, "links": []},
                     {
                         "id": "2",
                         "name": "Other",
+                        "member": True,
                         "links": [{"rel": "connections", "uri": connections}],
                     },
                 ]
@@ -304,6 +306,7 @@ async def test_login_flow_with_organization_connection(settings: Settings) -> No
         assert query["client_id"] == ["id"]
         assert query["redirect_uri"] == [redirect_uri]
         assert query["scope"] == ["ag2 eq1 org1 work1 offline_access"]
+        assert query["prompt"] == ["login"]
         state = query["state"][0]
         assert len(state) >= 32
 
@@ -356,7 +359,15 @@ async def test_login_keeps_exchanged_tokens_when_the_refresh_fails(settings: Set
         "GET",
         "/platform/organizations",
         json_response(
-            deere_list([{"id": "2", "links": [{"rel": "connections", "uri": connections}]}])
+            deere_list(
+                [
+                    {
+                        "id": "2",
+                        "member": True,
+                        "links": [{"rel": "connections", "uri": connections}],
+                    }
+                ]
+            )
         ),
     )
     lines: list[str] = []
@@ -407,6 +418,156 @@ async def test_login_without_connections_link_finishes_after_code(settings: Sett
         tokens = await asyncio.wait_for(task, 5)
     assert tokens.access_token == "acc"
     assert not any(line.startswith("https://connections") for line in lines)
+
+
+CONNECTIONS_LINK = "https://connections.deere.com/connections/id/select-organizations"
+
+
+def _org(name: str, *, member: bool, connected: bool) -> dict:
+    links = [] if connected else [{"rel": "connections", "uri": CONNECTIONS_LINK}]
+    return {"id": name.lower(), "name": name, "member": member, "links": links}
+
+
+def _org_lists(*pages: list[dict]) -> Callable[[httpx.Request], httpx.Response]:
+    """Answer each organization list request with the next page of `pages`; the last repeats."""
+    answers = iter(pages)
+    latest: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal latest
+        latest = next(answers, latest)
+        return json_response(deere_list(latest))
+
+    return handler
+
+
+def _login_routes(*pages: list[dict]) -> RouteHandler:
+    def token_endpoint(request: httpx.Request) -> httpx.Response:
+        refreshed = parse_qs(request.content.decode())["grant_type"] == ["refresh_token"]
+        return httpx.Response(
+            200,
+            json={
+                "access_token": "tok-acc-2" if refreshed else "tok-acc-1",
+                "refresh_token": "tok-ref",
+                "expires_in": 9,
+            },
+        )
+
+    routes = RouteHandler().add_oauth(token_endpoint)
+    routes.add("GET", "/platform/organizations", _org_lists(*pages))
+    return routes
+
+
+async def _login_to_the_chooser_step(
+    settings: Settings, routes: RouteHandler, lines: list[str], *, come_back: bool
+) -> Tokens:
+    """Sign in, then (when the chooser opened) return from it or leave it open."""
+    port = settings.callback_port
+    async with httpx.AsyncClient(transport=httpx.MockTransport(routes)) as http:
+        task = asyncio.create_task(
+            auth.login(
+                settings,
+                TokenStore(settings.token_path),
+                open_browser=False,
+                http=http,
+                echo=lines.append,
+            )
+        )
+        auth_url = await _wait_for_line(lines, "https://signin.johndeere.com")
+        state = parse_qs(urlsplit(auth_url).query)["state"][0]
+        callback = f"http://127.0.0.1:{port}/callback"
+        async with httpx.AsyncClient(trust_env=False) as browser:
+            await browser.get(callback, params={"code": "c", "state": state})
+            if come_back:
+                await _wait_for_line(lines, "https://connections.deere.com")
+                await browser.get(callback)
+        return await asyncio.wait_for(task, 5)
+
+
+@pytest.mark.anyio
+async def test_login_skips_the_chooser_for_an_organization_the_user_cannot_connect(
+    settings: Settings,
+) -> None:
+    settings = replace(settings, callback_port=_free_port())
+    routes = _login_routes(
+        [
+            _org("Home", member=True, connected=True),
+            _org("Neighbor", member=False, connected=False),
+        ]
+    )
+    lines: list[str] = []
+    tokens = await _login_to_the_chooser_step(settings, routes, lines, come_back=False)
+
+    assert tokens.access_token == "tok-acc-1"
+    assert not any(line.startswith("https://connections") for line in lines)
+    assert any("Connected: Home." in line for line in lines)
+    assert not any("Neighbor" in line for line in lines)
+    assert [r.url.path for r in routes.requests].count("/platform/organizations") == 1
+
+
+@pytest.mark.anyio
+async def test_login_reports_connected_organizations_after_the_chooser(
+    settings: Settings,
+) -> None:
+    settings = replace(settings, callback_port=_free_port())
+    routes = _login_routes(
+        [_org("Home", member=True, connected=True), _org("Barn", member=True, connected=False)],
+        [_org("Home", member=True, connected=True), _org("Barn", member=True, connected=True)],
+    )
+    lines: list[str] = []
+    tokens = await _login_to_the_chooser_step(settings, routes, lines, come_back=True)
+
+    assert tokens.access_token == "tok-acc-2"
+    report = next(line for line in lines if line.startswith("Organization access saved."))
+    assert "Connected: Home, Barn." in report and "Not connected" not in report
+    assert not any("different John Deere user" in line for line in lines)
+    org_requests = [r for r in routes.requests if r.url.path == "/platform/organizations"]
+    assert [r.headers["authorization"] for r in org_requests] == [
+        "Bearer tok-acc-1",
+        "Bearer tok-acc-2",  # the second read uses the renewed sign-in
+    ]
+
+
+@pytest.mark.anyio
+async def test_login_says_what_to_do_when_the_chooser_left_an_organization_unconnected(
+    settings: Settings,
+) -> None:
+    settings = replace(settings, callback_port=_free_port())
+    still_open = [
+        _org("Home", member=True, connected=True),
+        _org("Barn", member=True, connected=False),
+    ]
+    routes = _login_routes(still_open, still_open)
+    lines: list[str] = []
+    tokens = await _login_to_the_chooser_step(settings, routes, lines, come_back=True)
+
+    assert tokens.access_token == "tok-acc-2"
+    report = next(line for line in lines if "Not connected: Barn." in line)
+    assert "Connected: Home." in report
+    assert "different John Deere user" in report
+    assert "https://connections.deere.com" in report and "deere-mcp login" in report
+    assert not any(line.startswith("Organization access saved.") for line in lines)
+
+
+@pytest.mark.anyio
+async def test_login_gives_up_on_a_closed_chooser_and_says_where_things_stand(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(auth, "CHOOSER_TIMEOUT", 0.1)
+    settings = replace(settings, callback_port=_free_port())
+    store = TokenStore(settings.token_path)
+    routes = _login_routes(
+        [_org("Home", member=True, connected=True), _org("Barn", member=True, connected=False)]
+    )
+    lines: list[str] = []
+    with pytest.raises(AuthError) as excinfo:
+        await _login_to_the_chooser_step(settings, routes, lines, come_back=False)
+
+    message = str(excinfo.value)
+    assert "Your sign-in is saved." in message
+    assert "Connected: Home." in message and "Not connected: Barn." in message
+    assert "deere-mcp login" in message
+    assert store.load() is not None
 
 
 @pytest.mark.anyio
