@@ -1,7 +1,7 @@
 # Deere Ops Center MCP
 
 > [!WARNING]
-> **This is alpha software.** It is early, has had limited testing against real farm data, and may change or break between releases without notice. Double-check anything it tells you against Operations Center before you rely on it for decisions about your operation.
+> **This is alpha software.** It was written largely with the help of AI coding tools and has only been tried on a few computers. It may not install or run at all on yours, especially on a version of Windows, macOS or Linux, or an AI app, that it hasn't been tried with. Expect rough edges, and double-check anything it tells you against Operations Center before you rely on it.
 
 Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Operations Center data: your fields and boundaries, each tillage, planting, application and harvest pass with its totals, your machines and their health, plus the products, operators, guidance lines and work plans behind them. It runs on your own computer. It can only read; it cannot change anything in Operations Center.
 
