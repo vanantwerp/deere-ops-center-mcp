@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import json
 import os
 import socket
@@ -242,6 +244,12 @@ async def test_listener_port_in_use_is_a_plain_error() -> None:
 # --- full login and logout ------------------------------------------------------------------
 
 
+def _s256(verifier: str) -> str:
+    """The PKCE challenge for `verifier`, worked out here rather than by the code under test."""
+    digest = hashlib.sha256(verifier.encode()).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+
+
 async def _wait_for_line(lines: list[str], prefix: str) -> str:
     for _ in range(500):
         for line in lines:
@@ -307,6 +315,8 @@ async def test_login_flow_with_organization_connection(settings: Settings) -> No
         assert query["redirect_uri"] == [redirect_uri]
         assert query["scope"] == ["ag2 eq1 org1 work1 offline_access"]
         assert query["prompt"] == ["login"]
+        assert query["code_challenge_method"] == ["S256"]
+        challenge = query["code_challenge"][0]
         state = query["state"][0]
         assert len(state) >= 32
 
@@ -326,17 +336,23 @@ async def test_login_flow_with_organization_connection(settings: Settings) -> No
     # The token left behind is the one refreshed after the organization step.
     assert tokens.access_token == "tok-acc-789" and tokens.refresh_token == "tok-ref-012"
     assert store.load() == tokens
-    assert token_forms == [
-        {
-            "grant_type": ["authorization_code"],
-            "code": ["the-code"],
-            "redirect_uri": [redirect_uri],
-        },
-        {"grant_type": ["refresh_token"], "refresh_token": ["tok-ref-456"]},
-    ]
+    exchange, renewal = token_forms
+    # PKCE: the code exchange carries the verifier behind the challenge the browser was sent.
+    verifier = exchange.pop("code_verifier")[0]
+    assert 43 <= len(verifier) <= 128
+    assert _s256(verifier) == challenge
+    assert exchange == {
+        "grant_type": ["authorization_code"],
+        "code": ["the-code"],
+        "redirect_uri": [redirect_uri],
+    }
+    assert renewal == {"grant_type": ["refresh_token"], "refresh_token": ["tok-ref-456"]}
     org_request = next(r for r in routes.requests if r.url.path == "/platform/organizations")
     assert org_request.headers["authorization"] == "Bearer tok-acc-123"
-    assert not any("tok-acc" in line or "tok-ref" in line or "secret" in line for line in lines)
+    assert not any(
+        "tok-acc" in line or "tok-ref" in line or "secret" in line or verifier in line
+        for line in lines
+    )
 
 
 @pytest.mark.anyio

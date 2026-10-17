@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
+import hashlib
 import hmac
 import json
 import logging
@@ -238,13 +240,22 @@ async def refresh_tokens(
 
 
 async def exchange_code(
-    http: httpx.AsyncClient, settings: Settings, code: str, redirect_uri: str
+    http: httpx.AsyncClient, settings: Settings, code: str, redirect_uri: str, code_verifier: str
 ) -> Tokens:
-    """Trade the one-time code from the browser callback for tokens."""
+    """Trade the one-time code from the browser callback for tokens.
+
+    The PKCE verifier proves that this process is the one that started the sign-in; the
+    client secret still goes with the request as before.
+    """
     response = await _token_request(
         http,
         settings,
-        {"grant_type": "authorization_code", "code": code, "redirect_uri": redirect_uri},
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "code_verifier": code_verifier,
+        },
         "finish signing in",
     )
     if response.status_code >= 400:
@@ -261,7 +272,15 @@ async def exchange_code(
     return _tokens_from_response(data, previous_refresh=None)
 
 
-def authorization_url(endpoint: str, client_id: str, redirect_uri: str, state: str) -> str:
+def pkce_challenge(verifier: str) -> str:
+    """The PKCE ``S256`` challenge for a verifier: base64url of its SHA-256, without padding."""
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+
+
+def authorization_url(
+    endpoint: str, client_id: str, redirect_uri: str, state: str, code_challenge: str
+) -> str:
     query = urlencode(
         {
             "response_type": "code",
@@ -269,6 +288,8 @@ def authorization_url(endpoint: str, client_id: str, redirect_uri: str, state: s
             "redirect_uri": redirect_uri,
             "scope": SCOPES,
             "state": state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
             "prompt": "login",  # always ask for credentials, so switching users works
         }
     )
@@ -633,14 +654,17 @@ async def login(
         endpoints = await discover(http)
         redirect_uri = settings.redirect_uri
         state = secrets.token_urlsafe(32)
+        verifier = secrets.token_urlsafe(64)  # PKCE; lives only in memory, for this sign-in
         async with CallbackListener(settings.callback_port) as listener:
-            url = authorization_url(endpoints.authorization, client_id, redirect_uri, state)
+            url = authorization_url(
+                endpoints.authorization, client_id, redirect_uri, state, pkce_challenge(verifier)
+            )
             say("Sign in to John Deere in your browser. If no browser opens, visit this link:")
             say(url)
             if open_browser:
                 _open_browser(url)
             code = await listener.wait_for_code(state, LOGIN_TIMEOUT)
-            tokens = await exchange_code(http, settings, code, redirect_uri)
+            tokens = await exchange_code(http, settings, code, redirect_uri, verifier)
             store.save(tokens)
 
             try:
