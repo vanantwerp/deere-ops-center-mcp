@@ -270,10 +270,16 @@ Everything works without these. Set them as environment variables, or in the `co
 
 **Claude Desktop says the server could not start.** Run `connect` (see "If you reinstall or move `uv`" above).
 
-**"command not found: uvx" on macOS or Linux, or "The term 'uvx' is not recognized" on Windows.** Either `uv` is not installed yet, or the terminal was opened before it was installed. Run the install line from step 1 of the quick start if you have not, then close the terminal and open a new one. If you are using a terminal inside another app, such as Claude, quit that whole app and open it again; a new tab inside it does not see the change. On macOS or Linux, if a new terminal still does not find it, run this once, then open a new terminal:
+**"command not found: uvx" on macOS or Linux, or "The term 'uvx' is not recognized" on Windows.** Either `uv` is not installed yet, or the terminal was opened before it was installed. Run the install line from step 1 of the quick start if you have not, then close the terminal and open a new one. If you are using a terminal inside another app, such as Claude, quit that whole app and open it again; a new tab inside it does not see the change. On macOS or Linux, if a new terminal still does not find it, run the line for your system once, then open a new terminal. On macOS:
 
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+```
+
+On Linux (most use bash):
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 ```
 
 **No browser opened during sign-in.** Copy the link printed in the terminal into any browser.
