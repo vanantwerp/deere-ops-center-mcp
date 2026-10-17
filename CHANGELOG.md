@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- A running server now notices a new sign-in. After `logout` and `login` in a terminal, the next request uses the new sign-in, so Claude Desktop no longer needs a restart to switch John Deere users.
+- `login` renews the sign-in once more after you connect the application to an organization. Before, the sign-in issued moments earlier did not see the new connection, and fields and boundaries answered "403 Forbidden" until the next `login`.
+
 ## 0.1.0 - 2026-10-16
 
 First release. Everything below is new.
