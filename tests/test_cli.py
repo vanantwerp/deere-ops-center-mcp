@@ -139,8 +139,8 @@ def test_login_command_prints_signed_in(
 
 
 NOT_CONNECTED = (
-    "Signed in, but not connected: Barn. Sign out at https://connections.deere.com, then run "
-    "`deere-mcp login` again."
+    "Signed in, but not connected: Barn. If that is not what you expected, open "
+    "https://connections.deere.com to change it, then run `deere-mcp login` again."
 )
 
 

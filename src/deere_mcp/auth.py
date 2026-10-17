@@ -770,12 +770,19 @@ async def login(
                             "If the tools answer 403, run `deere-mcp login` again."
                         )
                     elif missing := _split_organizations(now)[1]:
+                        # The person may simply have chosen not to connect it, so say what to
+                        # do if that was not the intention, without guessing why.
                         say(
-                            f"{_connection_summary(now)} The connections page was probably signed "
-                            "in as a different John Deere user. Sign out at "
-                            f"https://{CONNECTIONS_HOST}, then run `deere-mcp login` again."
+                            f"{_connection_summary(now)} If that is not what you expected, open "
+                            f"https://{CONNECTIONS_HOST} to change it, then run `deere-mcp login` "
+                            "again. If that page shows someone else's organizations, sign out "
+                            "there first."
                         )
-                        summary = _not_connected(missing, f"Sign out at https://{CONNECTIONS_HOST}")
+                        summary = _not_connected(
+                            missing,
+                            "If that is not what you expected, open "
+                            f"https://{CONNECTIONS_HOST} to change it",
+                        )
                     else:
                         say(f"Organization access saved. {_connection_summary(now)}")
             return LoginResult(tokens, summary)

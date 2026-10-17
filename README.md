@@ -185,7 +185,7 @@ Without a Terminal panel, follow the quick start for your platform.
 uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp login
 ```
 
-John Deere asks for your user name and password every time, so you can sign in as someone else. If the terminal then says an organization is "Not connected" and that the connections page was probably signed in as a different user, open [connections.deere.com](https://connections.deere.com), sign out there, and run the command again. The command lists which of your organizations are connected when it finishes.
+John Deere asks for your user name and password every time, so you can sign in as someone else. If the terminal then says an organization is "Not connected" and you expected it to be, open [connections.deere.com](https://connections.deere.com) to change that, then run the command again. If that page shows someone else's organizations, sign out there first. The command lists which of your organizations are connected when it finishes.
 
 **Signing out.** Removes the saved sign-in from your computer and cancels it at John Deere:
 

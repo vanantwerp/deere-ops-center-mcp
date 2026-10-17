@@ -576,7 +576,7 @@ async def test_login_reports_connected_organizations_after_the_chooser(
     assert result.summary == SIGNED_IN
     report = next(line for line in lines if line.startswith("Organization access saved."))
     assert "Connected: Home, Barn." in report and "Not connected" not in report
-    assert not any("different John Deere user" in line for line in lines)
+    assert not any("not what you expected" in line for line in lines)
     org_requests = [r for r in routes.requests if r.url.path == "/platform/organizations"]
     assert [r.headers["authorization"] for r in org_requests] == [
         "Bearer tok-acc-1",
@@ -621,13 +621,16 @@ async def test_login_says_what_to_do_when_the_chooser_left_an_organization_uncon
 
     assert result.tokens.access_token == "tok-acc-2"
     report = next(line for line in lines if "Not connected: Barn." in line)
-    assert "Connected: Home." in report
-    assert "different John Deere user" in report
-    assert "https://connections.deere.com" in report and "deere-mcp login" in report
+    assert report == (
+        "Connected: Home. Not connected: Barn. If that is not what you expected, open "
+        "https://connections.deere.com to change it, then run `deere-mcp login` again. "
+        "If that page shows someone else's organizations, sign out there first."
+    )
+    assert not any("probably" in line for line in lines)  # choosing not to connect is fine
     assert not any(line.startswith("Organization access saved.") for line in lines)
     assert result.summary == (
-        "Signed in, but not connected: Barn. Sign out at https://connections.deere.com, "
-        "then run `deere-mcp login` again."
+        "Signed in, but not connected: Barn. If that is not what you expected, open "
+        "https://connections.deere.com to change it, then run `deere-mcp login` again."
     )
 
 
