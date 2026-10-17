@@ -429,9 +429,37 @@ async def test_login_without_connections_link_finishes_after_code(settings: Sett
 CONNECTIONS_LINK = "https://connections.deere.com/connections/id/select-organizations"
 
 
-def _org(name: str, *, member: bool, connected: bool) -> dict:
+def _org(name: str, *, member: bool | None, connected: bool) -> dict:
+    """An organization record; ``member=None`` leaves the field out, as Deere might."""
     links = [] if connected else [{"rel": "connections", "uri": CONNECTIONS_LINK}]
-    return {"id": name.lower(), "name": name, "member": member, "links": links}
+    org = {"id": name.lower(), "name": name, "links": links}
+    if member is not None:
+        org["member"] = member
+    return org
+
+
+def test_connections_link_is_found_whoever_owns_the_organization() -> None:
+    """Deere offers the link for a partner's organization too, so membership does not filter."""
+    assert auth.find_connections_link([_org("Home", member=True, connected=True)]) is None
+    for member in (True, False, None):
+        assert auth.find_connections_link([_org("Barn", member=member, connected=False)]) == (
+            CONNECTIONS_LINK
+        )
+
+
+def test_connection_summary_marks_organizations_the_person_is_not_a_member_of() -> None:
+    assert (
+        auth._connection_summary(
+            [
+                _org("Home", member=True, connected=True),
+                _org("Cline Farms", member=False, connected=True),
+                _org("Barn", member=None, connected=False),
+                _org("Shed", member=False, connected=False),
+            ]
+        )
+        == "Connected: Home, Cline Farms (not a member). Not connected: Barn, Shed (not a member)."
+    )
+    assert auth._connection_summary([]) == "No organizations are listed for this sign-in."
 
 
 def _org_lists(*pages: list[dict]) -> Callable[[httpx.Request], httpx.Response]:
@@ -491,15 +519,35 @@ async def _login_to_the_chooser_step(
 
 
 @pytest.mark.anyio
-async def test_login_skips_the_chooser_for_an_organization_the_user_cannot_connect(
+async def test_login_opens_the_chooser_for_an_organization_the_user_is_not_a_member_of(
+    settings: Settings,
+) -> None:
+    """A partner's organization can be connected too; the page, not `member`, decides."""
+    settings = replace(settings, callback_port=_free_port())
+    routes = _login_routes(
+        [_org("Home", member=True, connected=True), _org("Partner", member=False, connected=False)],
+        [_org("Home", member=True, connected=True), _org("Partner", member=False, connected=True)],
+    )
+    lines: list[str] = []
+    result = await _login_to_the_chooser_step(settings, routes, lines, come_back=True)
+
+    assert result.tokens.access_token == "tok-acc-2"
+    assert result.summary == SIGNED_IN
+    assert any(line.startswith("https://connections.deere.com") for line in lines)
+    assert any(
+        line.startswith("This sign-in can see: Home, Partner (not a member).") for line in lines
+    )
+    assert "Organization access saved. Connected: Home, Partner (not a member)." in lines
+    assert [r.url.path for r in routes.requests].count("/platform/organizations") == 2
+
+
+@pytest.mark.anyio
+async def test_login_finishes_without_the_chooser_when_everything_is_connected(
     settings: Settings,
 ) -> None:
     settings = replace(settings, callback_port=_free_port())
     routes = _login_routes(
-        [
-            _org("Home", member=True, connected=True),
-            _org("Neighbor", member=False, connected=False),
-        ]
+        [_org("Home", member=True, connected=True), _org("Partner", member=False, connected=True)]
     )
     lines: list[str] = []
     result = await _login_to_the_chooser_step(settings, routes, lines, come_back=False)
@@ -507,9 +555,8 @@ async def test_login_skips_the_chooser_for_an_organization_the_user_cannot_conne
     assert result.tokens.access_token == "tok-acc-1"
     assert result.summary == SIGNED_IN
     assert not any(line.startswith("https://connections") for line in lines)
-    assert any("Connected: Home." in line for line in lines)
-    assert not any("Neighbor" in line for line in lines)
-    assert not any(line.startswith("You are signed in as a member of") for line in lines)
+    assert "Signed in to John Deere. Connected: Home, Partner (not a member)." in lines
+    assert not any(line.startswith("This sign-in can see") for line in lines)
     assert [r.url.path for r in routes.requests].count("/platform/organizations") == 1
 
 
@@ -538,23 +585,22 @@ async def test_login_reports_connected_organizations_after_the_chooser(
 
 
 @pytest.mark.anyio
-async def test_login_names_the_members_organizations_before_the_chooser_opens(
+async def test_login_names_the_organizations_it_can_see_before_the_chooser_opens(
     settings: Settings,
 ) -> None:
     settings = replace(settings, callback_port=_free_port())
     before = [
         _org("Home", member=True, connected=True),
         _org("Neighbor", member=False, connected=False),
-        _org("Barn", member=True, connected=False),
+        _org("Barn", member=None, connected=False),
     ]
-    after = [_org("Home", member=True, connected=True), _org("Barn", member=True, connected=True)]
+    after = [_org("Home", member=True, connected=True), _org("Barn", member=None, connected=True)]
     routes = _login_routes(before, after)
     lines: list[str] = []
     await _login_to_the_chooser_step(settings, routes, lines, come_back=True)
 
-    who = next(line for line in lines if line.startswith("You are signed in as a member of:"))
-    assert who.startswith("You are signed in as a member of: Home, Barn.")
-    assert "Neighbor" not in who
+    who = next(line for line in lines if line.startswith("This sign-in can see:"))
+    assert who.startswith("This sign-in can see: Home, Neighbor (not a member), Barn.")
     assert "signed in as someone else" in who and "deere-mcp login" in who
     link = next(line for line in lines if line.startswith("https://connections.deere.com"))
     assert lines.index(who) < lines.index(link)

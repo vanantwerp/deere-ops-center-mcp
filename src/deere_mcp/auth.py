@@ -586,45 +586,44 @@ async def list_organizations(
 
 
 def find_connections_link(organizations: list[dict[str, Any]]) -> str | None:
-    """Return the first 'connections' link of an organization the user is a member of.
+    """Return the first 'connections' link among the organizations, whoever owns them.
 
-    Only members can connect an organization, so a link on any other organization is no use.
+    Deere offers the link for every organization the sign-in can see but has not connected,
+    including a partner's organization the person is not a member of, so the page opens
+    whenever there is one; only the page itself knows what the person may connect.
     """
     for org in organizations:
-        if org.get("member") is True:
-            link = _connections_link(org)
-            if link:
-                return link
+        link = _connections_link(org)
+        if link:
+            return link
     return None
 
 
 def _organization_names(organizations: list[dict[str, Any]]) -> list[str]:
-    return [str(org.get("name") or "").strip() or "an organization" for org in organizations]
+    """Names for the terminal; an organization the person is not a member of says so."""
+    names = []
+    for org in organizations:
+        name = str(org.get("name") or "").strip() or "an organization"
+        names.append(f"{name} (not a member)" if org.get("member") is False else name)
+    return names
 
 
-def _member_organizations(organizations: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [org for org in organizations if org.get("member") is True]
-
-
-def _split_member_organizations(
-    organizations: list[dict[str, Any]],
-) -> tuple[list[str], list[str]]:
-    """Names of the member organizations that are connected, and of those that are not."""
-    members = [org for org in organizations if org.get("member") is True]
-    connected = _organization_names([org for org in members if not _connections_link(org)])
-    missing = _organization_names([org for org in members if _connections_link(org)])
+def _split_organizations(organizations: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
+    """Names of the organizations that are connected, and of those that are not."""
+    connected = _organization_names([org for org in organizations if not _connections_link(org)])
+    missing = _organization_names([org for org in organizations if _connections_link(org)])
     return connected, missing
 
 
 def _connection_summary(organizations: list[dict[str, Any]]) -> str:
-    """One plain sentence on which of the user's organizations are connected."""
-    connected, missing = _split_member_organizations(organizations)
+    """One plain sentence on which of the sign-in's organizations are connected."""
+    connected, missing = _split_organizations(organizations)
     parts = []
     if connected:
         parts.append(f"Connected: {', '.join(connected)}.")
     if missing:
         parts.append(f"Not connected: {', '.join(missing)}.")
-    return " ".join(parts) or "You are not a member of any organization that can be connected."
+    return " ".join(parts) or "No organizations are listed for this sign-in."
 
 
 SIGNED_IN = "Signed in."
@@ -719,16 +718,16 @@ async def login(
                         f"see. Visit https://{CONNECTIONS_HOST} to do that."
                     )
                     summary = _not_connected(
-                        _split_member_organizations(organizations)[1],
+                        _split_organizations(organizations)[1],
                         f"Visit https://{CONNECTIONS_HOST} to connect",
                     )
                 else:
                     link = with_redirect(connections, redirect_uri)
-                    members = ", ".join(_organization_names(_member_organizations(organizations)))
+                    seen = ", ".join(_organization_names(organizations))
                     say(
-                        f"You are signed in as a member of: {members}. If the page that opens "
-                        "shows other organizations, it is signed in as someone else: sign out "
-                        "there, then run `deere-mcp login` again."
+                        f"This sign-in can see: {seen}. If the page that opens shows other "
+                        "organizations, it is signed in as someone else: sign out there, then "
+                        "run `deere-mcp login` again."
                     )
                     say(
                         "John Deere asks you to choose which organizations this application may "
@@ -770,7 +769,7 @@ async def login(
                             "Signed in, but could not check which organizations are connected. "
                             "If the tools answer 403, run `deere-mcp login` again."
                         )
-                    elif missing := _split_member_organizations(now)[1]:
+                    elif missing := _split_organizations(now)[1]:
                         say(
                             f"{_connection_summary(now)} The connections page was probably signed "
                             "in as a different John Deere user. Sign out at "
