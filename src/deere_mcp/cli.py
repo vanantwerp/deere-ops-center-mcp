@@ -273,7 +273,10 @@ def _connect_clients(args: argparse.Namespace) -> _ConnectOutcome:
         elif not go:
             print("Claude Code: skipped.")
         else:
-            ok, message = clients.register_with_claude_code(entry, name=args.name, claude=claude)
+            typed = "claude" if _which("claude") else claude  # Claude Desktop's own copy
+            ok, message = clients.register_with_claude_code(
+                entry, name=args.name, claude=claude, typed=typed
+            )
             if ok:
                 print(f"Claude Code: {message}")
             else:

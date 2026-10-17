@@ -425,6 +425,23 @@ def test_connect_reports_claude_code_failure(
     assert "claude mcp add --scope user" in err
 
 
+def test_connect_names_claude_desktops_copy_when_claude_is_not_on_path(
+    home: Path,
+    machine: FakeMachine,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """On Windows the Code tab's copy is not on PATH, so `claude mcp add` would not run."""
+    copy = str(machine.user_home / "Claude" / "claude-code" / "2.1.299" / "abc" / "claude")
+    monkeypatch.setattr(clients, "claude_code_available", lambda **kwargs: copy)
+    machine.claude_reply = (1, "", "Invalid scope")
+    assert cli.main(["connect", "--yes"]) == 1
+    assert machine.claude_calls[0][0] == copy
+    err = capsys.readouterr().err
+    shown = clients._display_claude([copy, "mcp", "add", "--scope", "user"])
+    assert f"by hand with: {shown}" in err  # with "& '...'" on Windows
+
+
 def test_setup_asks_and_adds_to_both_apps(
     home: Path,
     machine: FakeMachine,

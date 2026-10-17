@@ -319,15 +319,18 @@ def register_with_claude_code(
     name: str = DEFAULT_NAME,
     run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     claude: str | None = None,
+    typed: str = "claude",
 ) -> tuple[bool, str]:
     """Run ``claude mcp add``; return ``(ok, one-line message)``. Never raises.
 
-    `claude` is the command's path (default: found on PATH). Claude Code refuses to add a
-    name that already exists, so an existing user-scope entry is removed and added again.
+    `claude` is the command's path (default: found on PATH). `typed` is how the person runs
+    it in a terminal, for the commands to run by hand: ``claude`` when it is on PATH, else
+    its full path. Claude Code refuses to add a name that already exists, so an existing
+    user-scope entry is removed and added again.
     """
     program = claude or claude_code_available() or "claude"
     add = claude_code_add_command(entry, name=name, claude=program)
-    by_hand = _display_command(claude_code_add_command(entry, name=name))
+    by_hand = _display_claude(claude_code_add_command(entry, name=name, claude=typed))
 
     ok, detail = _run_claude(run, add)
     if ok:
@@ -342,7 +345,7 @@ def register_with_claude_code(
         if ok:
             return True, f'replaced the existing "{name}" entry (user scope)'
         return False, f"could not add the server ({detail}). Add it by hand with: {by_hand}"
-    remove_by_hand = _display_command(["claude", *remove[1:]])
+    remove_by_hand = _display_claude([typed, *remove[1:]])
     return False, (
         f'could not replace the existing "{name}" entry ({detail}). '
         f"Replace it by hand: {remove_by_hand}, then {by_hand}"
@@ -386,6 +389,19 @@ def _display_command(command: Sequence[str]) -> str:
     if os.name == "nt":
         return subprocess.list2cmdline(list(command))
     return shlex.join(command)
+
+
+def _display_claude(command: Sequence[str]) -> str:
+    """A Claude Code command to paste.
+
+    PowerShell runs a program given by its path only after ``&``. That path goes in single
+    quotes (``'`` doubled) so a ``'`` or ``$`` in it stays literal; the rest of the command is
+    quoted as before.
+    """
+    if os.name != "nt" or command[0] == "claude":
+        return _display_command(command)
+    program = command[0].replace("'", "''")
+    return f"& '{program}' {_display_command(command[1:])}"
 
 
 def _reason(exc: BaseException) -> str:

@@ -561,6 +561,28 @@ def test_register_failure_gives_the_command_to_run_by_hand() -> None:
     assert "claude mcp add --scope user --transport stdio deere -- /opt/uv/bin/uvx" in message
 
 
+def test_register_failure_names_claude_desktops_copy_when_claude_is_not_on_path() -> None:
+    run = FakeRun((1, "", "Invalid scope"))
+    copy = "/Claude/claude-code/2.1.299/abc/claude"
+    ok, message = clients.register_with_claude_code(make_entry(), run=run, claude=copy, typed=copy)
+    assert ok is False
+    shown = clients._display_claude([copy, "mcp", "add", "--scope", "user"])
+    assert f"by hand with: {shown}" in message  # with "& '...'" on Windows
+
+
+def test_powershell_needs_an_ampersand_before_a_quoted_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    exe = r"C:\Users\Jo O'Brien\AppData\Roaming\Claude\claude-code\2.1.299\abc\claude.exe"
+    with monkeypatch.context() as patch:
+        patch.setattr(clients.os, "name", "nt")
+        by_path = clients._display_claude([exe, "mcp", "list"])
+        on_path = clients._display_claude(["claude", "mcp", "list"])
+    quoted = exe.replace("'", "''")
+    assert by_path == f"& '{quoted}' mcp list"
+    assert on_path == "claude mcp list"
+
+
 def test_register_never_raises() -> None:
     def missing(command: list[str], **kwargs: Any) -> Any:
         raise FileNotFoundError(2, "No such file or directory")
