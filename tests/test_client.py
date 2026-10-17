@@ -372,6 +372,18 @@ async def test_logout_while_running_is_noticed(settings: Settings, saved_tokens:
     assert len(routes.requests) == 1
 
 
+async def test_new_login_while_running_is_noticed(settings: Settings, saved_tokens: Tokens) -> None:
+    routes = RouteHandler().add("GET", ORGS, json_response(deere_list([{"id": "1"}])))
+    store = TokenStore(settings.token_path)
+    async with make_client(settings, routes) as client:
+        await client.get_json(client.url("organizations"))
+        store.delete()  # `deere-mcp logout`, then `deere-mcp login` before any request
+        store.save(Tokens("other-access", "other-refresh", expires_at=time.time() + 3600))
+        await client.get_json(client.url("organizations"))
+    sent = [r.headers["authorization"] for r in routes.requests]
+    assert sent == [f"Bearer {saved_tokens.access_token}", "Bearer other-access"]
+
+
 async def test_malformed_url_is_a_readable_error(settings: Settings, saved_tokens: Tokens) -> None:
     routes = RouteHandler()
     async with make_client(settings, routes) as client:

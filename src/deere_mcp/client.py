@@ -201,6 +201,7 @@ class DeereClient:
         self._timeout = timeout
         self._http = httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=False)
         self._tokens: Tokens | None = None
+        self._tokens_stamp: int | None = None  # the token file's mtime when we last read it
         self._lock = asyncio.Lock()
 
     # -- URLs ------------------------------------------------------------------------------
@@ -215,11 +216,20 @@ class DeereClient:
 
     # -- tokens ----------------------------------------------------------------------------
 
+    def _file_stamp(self) -> int | None:
+        try:
+            return self.store.path.stat().st_mtime_ns
+        except OSError:
+            return None
+
     async def _current_tokens(self) -> Tokens:
-        if self._tokens is not None and not self.store.path.exists():
-            self._tokens = None  # `deere-mcp logout` removed the sign-in while we were running
+        stamp = self._file_stamp()
+        if self._tokens is not None and stamp != self._tokens_stamp:
+            # `deere-mcp logout` removed the sign-in, or `deere-mcp login` replaced it, while we ran
+            self._tokens = None
         if self._tokens is None:
             self._tokens = self.store.load()
+            self._tokens_stamp = stamp
         if self._tokens is None:
             if not self.settings.client_id or not self.settings.client_secret:
                 raise DeereError(None, f"Not set up yet. {NOT_SET_UP}")
