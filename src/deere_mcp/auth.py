@@ -615,6 +615,17 @@ def _split_organizations(organizations: list[dict[str, Any]]) -> tuple[list[str]
     return connected, missing
 
 
+def _unconnected_own(organizations: list[dict[str, Any]]) -> list[str]:
+    """Names of the unconnected organizations the person is a member of.
+
+    A partner's organization the person is not a member of is listed in the summary but
+    left out here, so leaving it unconnected does not turn the closing line into a warning.
+    """
+    return _organization_names(
+        [org for org in organizations if _connections_link(org) and org.get("member") is not False]
+    )
+
+
 def _connection_summary(organizations: list[dict[str, Any]]) -> str:
     """One plain sentence on which of the sign-in's organizations are connected."""
     connected, missing = _split_organizations(organizations)
@@ -634,7 +645,7 @@ class LoginResult:
     """What `login` leaves behind: the saved tokens and the line the CLI prints last."""
 
     tokens: Tokens
-    summary: str  # SIGNED_IN when every organization is connected, else a one-line warning
+    summary: str  # SIGNED_IN when the person's own organizations are all connected, else a warning
 
 
 def _not_connected(missing: list[str], what_to_do: str) -> str:
@@ -666,7 +677,8 @@ async def login(
 
     `echo` receives the lines meant for the person at the terminal (the CLI passes `print`);
     by default they go to stderr so nothing is ever written to stdout from here. The result's
-    `summary` is the closing line: "Signed in." only when nothing is left to connect.
+    `summary` is the closing line: "Signed in." only when none of the person's own organizations
+    is left to connect.
     """
     say = echo or _stderr_echo
     summary = SIGNED_IN
@@ -716,10 +728,10 @@ async def login(
                         "John Deere asks you to choose which organizations this application may "
                         f"see. Visit https://{CONNECTIONS_HOST} to do that."
                     )
-                    summary = _not_connected(
-                        _split_organizations(organizations)[1],
-                        f"Visit https://{CONNECTIONS_HOST} to connect",
-                    )
+                    if missing := _unconnected_own(organizations):
+                        summary = _not_connected(
+                            missing, f"Visit https://{CONNECTIONS_HOST} to connect"
+                        )
                 else:
                     link = with_redirect(connections, redirect_uri)
                     seen = ", ".join(_organization_names(organizations))
@@ -739,16 +751,13 @@ async def login(
                     try:
                         await listener.wait_for_return(waiter, CHOOSER_TIMEOUT)
                     except AuthError:
-                        now = await _read_organizations_quietly(http, settings, tokens)
-                        state_now = f" {_connection_summary(now)}" if now else ""
-                        raise AuthError(
-                            "Timed out waiting for the organization step. Your sign-in is saved."
-                            f"{state_now} If an organization is missing, run `deere-mcp login` "
-                            f"again or connect it at https://{CONNECTIONS_HOST}. If that page "
-                            "shows someone else's organizations, sign out there first."
-                        ) from None
+                        # A closed page never reports back, but the person may have connected
+                        # the organization before closing it, so carry on and check.
+                        say(
+                            "Stopped waiting for the organization page; checking what is connected."
+                        )
                     # Deere checks field access against the state a token was issued under, so
-                    # renew once now that the connection exists.
+                    # renew once now that the connection may exist.
                     try:
                         tokens = await refresh_tokens(http, settings, store, tokens)
                     except (AuthError, httpx.HTTPError):
@@ -767,7 +776,7 @@ async def login(
                             "Signed in, but could not check which organizations are connected. "
                             "If the tools answer 403, run `deere-mcp login` again."
                         )
-                    elif missing := _split_organizations(now)[1]:
+                    elif missing := _unconnected_own(now):
                         # The person may simply have chosen not to connect it, so say what to
                         # do if that was not the intention, without guessing why.
                         say(

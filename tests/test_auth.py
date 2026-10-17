@@ -676,6 +676,21 @@ async def test_login_sends_the_user_to_connections_deere_com_when_the_link_goes_
 
 
 @pytest.mark.anyio
+async def test_login_does_not_warn_about_a_partners_organization_whose_link_goes_elsewhere(
+    settings: Settings,
+) -> None:
+    settings = replace(settings, callback_port=_free_port())
+    partner = _org("Partner", member=False, connected=False)
+    partner["links"] = [{"rel": "connections", "uri": "https://example.test/select-organizations"}]
+    routes = _login_routes([_org("Home", member=True, connected=True), partner])
+    lines: list[str] = []
+    result = await _login_to_the_chooser_step(settings, routes, lines, come_back=False)
+
+    assert any(line.endswith("Visit https://connections.deere.com to do that.") for line in lines)
+    assert result.summary == SIGNED_IN
+
+
+@pytest.mark.anyio
 async def test_login_gives_up_on_a_closed_chooser_and_says_where_things_stand(
     settings: Settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -686,14 +701,53 @@ async def test_login_gives_up_on_a_closed_chooser_and_says_where_things_stand(
         [_org("Home", member=True, connected=True), _org("Barn", member=True, connected=False)]
     )
     lines: list[str] = []
-    with pytest.raises(AuthError) as excinfo:
-        await _login_to_the_chooser_step(settings, routes, lines, come_back=False)
+    result = await _login_to_the_chooser_step(settings, routes, lines, come_back=False)
 
-    message = str(excinfo.value)
-    assert "Your sign-in is saved." in message
-    assert "Connected: Home." in message and "Not connected: Barn." in message
-    assert "deere-mcp login" in message
-    assert store.load() is not None
+    assert any(line.startswith("Stopped waiting for the organization page") for line in lines)
+    assert any("Connected: Home. Not connected: Barn." in line for line in lines)
+    assert result.summary.startswith("Signed in, but not connected: Barn.")
+    saved = store.load()
+    assert saved is not None and saved.access_token == "tok-acc-2"
+
+
+@pytest.mark.anyio
+async def test_login_renews_when_the_chooser_was_closed_after_connecting(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Closing the page never reports back, so the connection made there must still count."""
+    monkeypatch.setattr(auth, "CHOOSER_TIMEOUT", 0.1)
+    settings = replace(settings, callback_port=_free_port())
+    store = TokenStore(settings.token_path)
+    routes = _login_routes(
+        [_org("Barn", member=True, connected=False)], [_org("Barn", member=True, connected=True)]
+    )
+    lines: list[str] = []
+    result = await _login_to_the_chooser_step(settings, routes, lines, come_back=False)
+
+    assert result.summary == SIGNED_IN
+    assert "Organization access saved. Connected: Barn." in lines
+    saved = store.load()
+    assert saved is not None and saved.access_token == "tok-acc-2"
+
+
+@pytest.mark.anyio
+async def test_login_does_not_warn_about_a_partners_organization_left_unconnected(
+    settings: Settings,
+) -> None:
+    settings = replace(settings, callback_port=_free_port())
+    page = [
+        _org("Home", member=True, connected=True),
+        _org("Partner", member=False, connected=False),
+    ]
+    routes = _login_routes(page, page)
+    lines: list[str] = []
+    result = await _login_to_the_chooser_step(settings, routes, lines, come_back=True)
+
+    assert result.summary == SIGNED_IN
+    assert (
+        "Organization access saved. Connected: Home. Not connected: Partner (not a member)."
+        in lines
+    )
 
 
 @pytest.mark.anyio
