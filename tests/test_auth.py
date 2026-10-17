@@ -259,7 +259,17 @@ async def test_login_flow_with_organization_connection(settings: Settings) -> No
     token_forms: list[dict[str, list[str]]] = []
 
     def token_endpoint(request: httpx.Request) -> httpx.Response:
-        token_forms.append(parse_qs(request.content.decode()))
+        form = parse_qs(request.content.decode())
+        token_forms.append(form)
+        if form["grant_type"] == ["refresh_token"]:
+            return httpx.Response(
+                200,
+                json={
+                    "access_token": "tok-acc-789",
+                    "refresh_token": "tok-ref-012",
+                    "expires_in": 9,
+                },
+            )
         return httpx.Response(
             200,
             json={"access_token": "tok-acc-123", "refresh_token": "tok-ref-456", "expires_in": 9},
@@ -310,18 +320,63 @@ async def test_login_flow_with_organization_connection(settings: Settings) -> No
             assert back.status_code == 200
         tokens = await asyncio.wait_for(task, 5)
 
-    assert tokens.access_token == "tok-acc-123" and tokens.refresh_token == "tok-ref-456"
+    # The token left behind is the one refreshed after the organization step.
+    assert tokens.access_token == "tok-acc-789" and tokens.refresh_token == "tok-ref-012"
     assert store.load() == tokens
     assert token_forms == [
         {
             "grant_type": ["authorization_code"],
             "code": ["the-code"],
             "redirect_uri": [redirect_uri],
-        }
+        },
+        {"grant_type": ["refresh_token"], "refresh_token": ["tok-ref-456"]},
     ]
     org_request = next(r for r in routes.requests if r.url.path == "/platform/organizations")
     assert org_request.headers["authorization"] == "Bearer tok-acc-123"
     assert not any("tok-acc" in line or "tok-ref" in line or "secret" in line for line in lines)
+
+
+@pytest.mark.anyio
+async def test_login_keeps_exchanged_tokens_when_the_refresh_fails(settings: Settings) -> None:
+    port = _free_port()
+    settings = replace(settings, callback_port=port)
+    store = TokenStore(settings.token_path)
+
+    def token_endpoint(request: httpx.Request) -> httpx.Response:
+        if parse_qs(request.content.decode())["grant_type"] == ["refresh_token"]:
+            return httpx.Response(400, json={"error": "invalid_grant"})
+        return httpx.Response(
+            200,
+            json={"access_token": "tok-acc-123", "refresh_token": "tok-ref-456", "expires_in": 9},
+        )
+
+    connections = "https://connections.deere.com/connections/id/select-organizations"
+    routes = RouteHandler().add_oauth(token_endpoint)
+    routes.add(
+        "GET",
+        "/platform/organizations",
+        json_response(
+            deere_list([{"id": "2", "links": [{"rel": "connections", "uri": connections}]}])
+        ),
+    )
+    lines: list[str] = []
+    async with httpx.AsyncClient(transport=httpx.MockTransport(routes)) as http:
+        task = asyncio.create_task(
+            auth.login(settings, store, open_browser=False, http=http, echo=lines.append)
+        )
+        auth_url = await _wait_for_line(lines, "https://signin.johndeere.com")
+        state = parse_qs(urlsplit(auth_url).query)["state"][0]
+        callback = f"http://127.0.0.1:{port}/callback"
+        async with httpx.AsyncClient(trust_env=False) as browser:
+            await browser.get(callback, params={"code": "c", "state": state})
+            await _wait_for_line(lines, "https://connections.deere.com")
+            await browser.get(callback)
+        tokens = await asyncio.wait_for(task, 5)
+
+    assert tokens.access_token == "tok-acc-123" and tokens.refresh_token == "tok-ref-456"
+    assert store.load() == tokens
+    report = next(line for line in lines if line.startswith("Could not renew the sign-in"))
+    assert "deere-mcp login" in report and "403" in report
 
 
 @pytest.mark.anyio
