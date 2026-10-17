@@ -238,10 +238,53 @@ def has_claude_desktop_entry(path: Path, *, name: str = DEFAULT_NAME) -> bool | 
     return isinstance(servers, dict) and name in servers
 
 
-def claude_code_available(which: Which = shutil.which) -> str | None:
-    """The absolute path of the ``claude`` command (Claude Code), or None."""
+def claude_code_available(
+    which: Which = shutil.which,
+    *,
+    platform: str = sys.platform,
+    env: Mapping[str, str] = os.environ,
+    home: Path | None = None,
+) -> str | None:
+    """The absolute path of the ``claude`` command (Claude Code), or None.
+
+    PATH first. On Windows, the Code tab in Claude Desktop runs its own copy of Claude Code,
+    which is not on PATH and does not pick up Claude Desktop's servers, so without this the
+    server never reaches that tab. That copy lives in Claude Desktop's folder.
+    """
     found = which("claude")
-    return os.path.abspath(found) if found else None
+    if found:
+        return os.path.abspath(found)
+    if platform != "win32":
+        return None
+    base = Path.home() if home is None else home
+    return _desktop_claude_code(_desktop_candidates(platform, env, base))
+
+
+def _desktop_claude_code(config_paths: Sequence[Path]) -> str | None:
+    """The newest ``claude.exe`` under ``<Claude Desktop folder>/claude-code``, or None.
+
+    The layout is ``claude-code/<version>/<build>/claude.exe``; the version folder decides,
+    then the newest file, and up to two folder levels are searched in case the layout moves.
+    """
+    found: list[tuple[tuple[int, ...], float, Path]] = []
+    for config in config_paths:
+        root = config.parent / "claude-code"
+        if not _is_dir(root):
+            continue
+        with contextlib.suppress(OSError):
+            for exe in [*root.glob("*/claude.exe"), *root.glob("*/*/claude.exe")]:
+                if _is_file(exe):
+                    version = exe.relative_to(root).parts[0]
+                    found.append((_version_key(version), _mtime(exe), exe))
+    if not found:
+        return None
+    return os.path.abspath(max(found, key=lambda item: item[:2])[2])
+
+
+def _version_key(name: str) -> tuple[int, ...]:
+    """``"2.1.299"`` as ``(2, 1, 299)``; a name that is not a version sorts first."""
+    parts = name.split(".")
+    return tuple(int(part) for part in parts) if all(part.isdigit() for part in parts) else ()
 
 
 def claude_code_add_command(

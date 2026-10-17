@@ -1,5 +1,8 @@
 # Deere Ops Center MCP
 
+> [!WARNING]
+> **This is alpha software.** It is early, has had limited testing against real farm data, and may change or break between releases without notice. Double-check anything it tells you against Operations Center before you rely on it for decisions about your operation.
+
 Deere Ops Center MCP lets an AI assistant such as Claude read your John Deere Operations Center data: your fields and boundaries, each tillage, planting, application and harvest pass with its totals, your machines and their health, plus the products, operators, guidance lines and work plans behind them. It runs on your own computer. It can only read; it cannot change anything in Operations Center.
 
 ---
@@ -146,7 +149,7 @@ New applications run against John Deere's sandbox, which uses your real organiza
 
 ## Using it with Claude Code (any platform)
 
-`setup` offers to add the server to Claude Code when it finds it. If you skipped that question, or installed Claude Code later, run this once in a terminal:
+`setup` offers to add the server to Claude Code when it finds it. On Windows that includes the Code tab in Claude Desktop, which runs its own copy of Claude Code and needs the server added there as well as to Claude Desktop. If you skipped that question, or installed Claude Code later, run this once in a terminal:
 
 ```bash
 claude mcp add --scope user deere -- uvx --from https://github.com/vanantwerp/deere-ops-center-mcp/archive/refs/heads/main.zip deere-mcp
@@ -166,7 +169,7 @@ If you use the Code tab in Claude Desktop, paste this repository's address into 
    ```
 
 3. You type the Application ID and Secret into that panel (the Secret is hidden), sign in to John Deere in the browser that opens, and choose your organization.
-4. Claude checks the result with `deere-mcp config` and asks you to quit and reopen Claude Desktop.
+4. Claude checks the result with `deere-mcp config` and asks you to quit and reopen Claude Desktop. Then start a new Code session: the one that ran the install does not get the new tools.
 
 Rules for Claude, or for anyone helping you:
 

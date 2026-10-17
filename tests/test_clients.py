@@ -442,6 +442,54 @@ def test_claude_code_available(tmp_path: Path) -> None:
     assert clients.claude_code_available(which=which_from({})) is None
 
 
+def bundled_claude(desktop_folder: Path, version: str, build: str = "abc123") -> Path:
+    exe = desktop_folder / "claude-code" / version / build / "claude.exe"
+    exe.parent.mkdir(parents=True)
+    exe.write_bytes(b"")
+    return exe
+
+
+def windows_claude_code(tmp_path: Path) -> str | None:
+    return clients.claude_code_available(
+        which=which_from({}), platform="win32", env=windows_env(tmp_path), home=tmp_path
+    )
+
+
+def test_windows_finds_claude_desktops_copy(tmp_path: Path) -> None:
+    desktop = tmp_path / "Roaming" / "Claude"
+    bundled_claude(desktop, "2.1.9")
+    newest = bundled_claude(desktop, "2.1.10")
+    assert windows_claude_code(tmp_path) == str(newest)
+
+
+def test_windows_finds_store_installs_copy(tmp_path: Path) -> None:
+    newest = bundled_claude(store_config(tmp_path).parent, "2.1.299")
+    assert windows_claude_code(tmp_path) == str(newest)
+
+
+def test_windows_path_wins_over_desktops_copy(tmp_path: Path) -> None:
+    bundled_claude(tmp_path / "Roaming" / "Claude", "2.1.299")
+    claude = str(tmp_path / "bin" / "claude.exe")
+    found = clients.claude_code_available(
+        which=which_from({"claude": claude}),
+        platform="win32",
+        env=windows_env(tmp_path),
+        home=tmp_path,
+    )
+    assert found == claude
+
+
+def test_windows_without_claude_code(tmp_path: Path) -> None:
+    (tmp_path / "Roaming" / "Claude" / "claude-code").mkdir(parents=True)
+    assert windows_claude_code(tmp_path) is None
+
+
+def test_desktops_copy_is_only_used_on_windows(tmp_path: Path) -> None:
+    bundled_claude(tmp_path / "Library" / "Application Support" / "Claude", "2.1.299")
+    found = clients.claude_code_available(which=which_from({}), platform="darwin", home=tmp_path)
+    assert found is None
+
+
 def test_add_command_shape() -> None:
     assert clients.claude_code_add_command(make_entry()) == [
         "claude",

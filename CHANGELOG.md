@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- On Windows, `setup` and `connect` now add the server to the Code tab in Claude Desktop. That tab runs its own copy of Claude Code, which is not on PATH and does not pick up Claude Desktop's servers, so setup used to print `Claude Code: skipped, the claude command was not found.` and the Deere tools never appeared there. Setup now finds that copy in Claude Desktop's folder, and `config` reports it.
 - `login` now suits switching John Deere accounts: John Deere asks for your password every time, it says which organizations this sign-in can see before the organization page opens (a partner's organization you are not a member of is marked "not a member"), it lists which organizations are connected when it finishes and what to do if one is not, and it stops waiting after three minutes if you close that page.
 - A running server now notices a new sign-in. After `logout` and `login` in a terminal, the next request uses the new sign-in, so Claude Desktop no longer needs a restart to switch John Deere users.
 - `login` renews the sign-in once more after you connect the application to an organization. Before, the sign-in issued moments earlier did not see the new connection, and fields and boundaries answered "403 Forbidden" until the next `login`.
